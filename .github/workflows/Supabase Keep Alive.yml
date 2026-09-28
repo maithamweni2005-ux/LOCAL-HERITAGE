@@ -1,0 +1,29 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Runs at 06:00 UTC every 3 days (Mondays and Thursdays)
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch: # Adds a manual "Run" button in GitHub UI for testing
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send keep-alive query
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/opportunities?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          echo "Supabase returned status code: $STATUS"
+
+          # 200 = Success, 206 = Partial Content
+          if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 206 ]; then
+            echo "Request failed or rejected"
+            exit 1
+          fi
+
+
+

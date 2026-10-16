@@ -2,29 +2,41 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    # Runs daily at 06:00 UTC to ensure Supabase never hits inactivity threshold
+    # Runs daily at 06:00 UTC
     - cron: '0 6 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch: # Allows manual run button
 
 jobs:
   ping-database:
     runs-on: ubuntu-latest
     steps:
-      - name: Send keep-alive query
+      - name: Validate Secrets Exist
         run: |
-          URL="${{ secrets.SUPABASE_URL }}/rest/v1/tourist_sites?select=id&limit=1"
-
-          # Perform request and capture HTTP code
-          STATUS=$(curl -sS -L -o /dev/null -w "%{http_code}" -X GET "$URL" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
-
-          echo "Supabase returned status code: $STATUS"
-
-          # 200 = OK, 206 = Partial Content
-          if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 206 ]; then
-            echo "Keep-alive ping failed with HTTP status $STATUS"
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is missing in GitHub repository settings."
             exit 1
           fi
 
-          echo "Keep-alive ping succeeded."
+      - name: Send keep-alive query
+        run: |
+          # Strip any accidental trailing slash from the URL
+          BASE_URL="${{ secrets.SUPABASE_URL }}"
+          CLEAN_URL="${BASE_URL%/}"
+          TARGET_URL="${CLEAN_URL}/rest/v1/tourist_sites?select=id&limit=1"
+
+          # Execute curl, capture response body to response.txt and HTTP code to STATUS
+          STATUS=$(curl -sS -L -w "%{http_code}" -o response.txt -X GET "$TARGET_URL" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "Supabase HTTP status code: $STATUS"
+
+          # 200 = OK, 206 = Partial Content
+          if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 206 ]; then
+            echo "Request failed with status $STATUS. Server response:"
+            cat response.txt
+            exit 1
+          fi
+
+          echo "Ping successful. Response:"
+          cat response.txt

@@ -1,222 +1,348 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Local Heritage</title>
-    <link rel="stylesheet" href="admin.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Local Heritage</title>
+  <link rel="stylesheet" href="admin.css">
+
+  <!-- Supabase JS & Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <div class="admin-container">
-        <!-- Sidebar -->
-        <aside class="admin-sidebar">
-            <div class="admin-logo">
-                <h2>Admin Panel</h2>
-            </div>
-            <nav class="admin-nav">
-                <a href="#" class="admin-nav-item active" data-section="users">
-                    <span>👥</span> All Users
-                </a>
-                <a href="#" class="admin-nav-item" data-section="artisans">
-                    <span>👨‍🎨</span> Artisans
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sites">
-                    <span>🏛️</span> Sites
-                </a>
-                <a href="#" class="admin-nav-item" data-section="reviews">
-                    <span>⭐</span> Reviews
-                </a>
-                <a href="#" class="admin-nav-item" data-section="analytics">
-                    <span>📊</span> Analytics
-                </a>
-            </nav>
-            <button class="logout-btn" id="adminLogoutBtn">Logout</button>
-        </aside>
+  <div class="admin-container">
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+      <div class="admin-logo">
+        <i data-lucide="shield" class="logo-icon"></i>
+        <span>Admin Panel</span>
+      </div>
+      <button id="mobileMenuBtn" class="btn-icon" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+    </header>
 
-        <!-- Main Content -->
-        <main class="admin-main">
-            <!-- Header -->
-            <header class="admin-header">
-                <h1 id="adminPageTitle">All Users</h1>
-                <div class="admin-user-info" id="adminUserInfo"></div>
-            </header>
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="admin-logo">
+        <i data-lucide="shield-check" class="logo-icon"></i>
+        <h2>Admin Console</h2>
+      </div>
 
-            <!-- Content -->
-            <div class="admin-content">
-                <!-- Users Section -->
-                <section id="users" class="admin-section active">
-                    <div class="section-controls">
-                        <div class="search-bar">
-                            <input type="text" id="userSearch" placeholder="Search users...">
-                        </div>
-                        <div class="filter-controls">
-                            <select id="roleFilter">
-                                <option value="">All Roles</option>
-                                <option value="customer">Customer</option>
-                                <option value="artisan">Artisan</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="usersTable" class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Phone</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTableBody">
-                                <tr><td colspan="7">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+      <nav class="admin-nav">
+        <a href="#" class="admin-nav-item active" data-section="users">
+          <i data-lucide="users"></i>
+          <span>Users</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="artisans">
+          <i data-lucide="hammer"></i>
+          <span>Artisans</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="sites">
+          <i data-lucide="map-pin"></i>
+          <span>Tourist Sites</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="bookings">
+          <i data-lucide="calendar"></i>
+          <span>Bookings</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="reviews">
+          <i data-lucide="star"></i>
+          <span>Reviews</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="analytics">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Analytics</span>
+        </a>
+      </nav>
 
-                <!-- Artisans Section -->
-                <section id="artisans" class="admin-section">
-                    <div class="section-controls">
-                        <div class="search-bar">
-                            <input type="text" id="artisanSearch" placeholder="Search artisans...">
-                        </div>
-                    </div>
-                    <div id="artisansTable" class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Business Name</th>
-                                    <th>Owner</th>
-                                    <th>Category</th>
-                                    <th>Location</th>
-                                    <th>Sites</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="artisansTableBody">
-                                <tr><td colspan="7">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+      <button class="logout-btn" id="adminLogoutBtn">
+        <i data-lucide="log-out"></i>
+        <span>Logout</span>
+      </button>
+    </aside>
 
-                <!-- Sites Section -->
-                <section id="sites" class="admin-section">
-                    <div class="section-controls">
-                        <div class="search-bar">
-                            <input type="text" id="siteSearch" placeholder="Search sites...">
-                        </div>
-                    </div>
-                    <div id="sitesTable" class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Title</th>
-                                    <th>Artisan</th>
-                                    <th>Location</th>
-                                    <th>Entry Fee</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sitesTableBody">
-                                <tr><td colspan="8">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- Reviews Section -->
-                <section id="reviews" class="admin-section">
-                    <div class="section-controls">
-                        <div class="search-bar">
-                            <input type="text" id="reviewSearch" placeholder="Search reviews...">
-                        </div>
-                    </div>
-                    <div id="reviewsTable" class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Customer</th>
-                                    <th>Artisan</th>
-                                    <th>Rating</th>
-                                    <th>Comment</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reviewsTableBody">
-                                <tr><td colspan="7">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- Analytics Section -->
-                <section id="analytics" class="admin-section">
-                    <div class="analytics-grid">
-                        <div class="analytics-card">
-                            <h3 id="totalUsers">0</h3>
-                            <p>Total Users</p>
-                        </div>
-                        <div class="analytics-card">
-                            <h3 id="totalArtisans">0</h3>
-                            <p>Total Artisans</p>
-                        </div>
-                        <div class="analytics-card">
-                            <h3 id="totalSites">0</h3>
-                            <p>Total Sites</p>
-                        </div>
-                        <div class="analytics-card">
-                            <h3 id="totalReviews">0</h3>
-                            <p>Total Reviews</p>
-                        </div>
-                        <div class="analytics-card">
-                            <h3 id="avgRating">0</h3>
-                            <p>Average Rating</p>
-                        </div>
-                        <div class="analytics-card">
-                            <h3 id="totalRevenue">$0</h3>
-                            <p>Total Revenue (Fees)</p>
-                        </div>
-                    </div>
-                    <div class="analytics-details">
-                        <div class="analytics-section">
-                            <h3>Users by Role</h3>
-                            <div id="usersByRole"></div>
-                        </div>
-                        <div class="analytics-section">
-                            <h3>Top Artisans (by reviews)</h3>
-                            <div id="topArtisans"></div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </main>
-    </div>
-
-    <!-- User Details Modal -->
-    <div id="userModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>User Details</h2>
-            <div id="userDetails"></div>
-            <div style="margin-top: 20px;">
-                <button class="btn-danger" id="deleteUserBtn">Delete User</button>
-            </div>
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-header">
+        <div>
+          <h1 id="adminPageTitle">User Accounts</h1>
+          <p class="muted-sub" id="adminPageSub">Manage registered customers, artisans, and credentials</p>
         </div>
-    </div>
+        <div class="admin-user-info" id="adminUserInfo">
+          <i data-lucide="user-check"></i>
+          <span id="adminNameBadge">Loading Admin...</span>
+        </div>
+      </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
-    <script src="admin.js"></script>
+      <div class="admin-content">
+        <!-- 1. USERS SECTION -->
+        <section id="users" class="admin-section active">
+          <div class="section-controls">
+            <div class="search-bar">
+              <i data-lucide="search"></i>
+              <input type="text" id="userSearch" placeholder="Search by name or email...">
+            </div>
+            <div class="filter-controls">
+              <select id="roleFilter">
+                <option value="">All Roles</option>
+                <option value="customer">Customers</option>
+                <option value="artisan">Artisans</option>
+                <option value="admin">Admins</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="5" class="loading-td">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 2. ARTISANS SECTION -->
+        <section id="artisans" class="admin-section">
+          <div class="section-controls">
+            <div class="search-bar">
+              <i data-lucide="search"></i>
+              <input type="text" id="artisanSearch" placeholder="Search artisan business or craft...">
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Workshop / Business</th>
+                  <th>Artisan Owner</th>
+                  <th>Craft Category</th>
+                  <th>Location</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="artisansTableBody">
+                <tr><td colspan="5" class="loading-td">Loading artisans...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 3. SITES SECTION -->
+        <section id="sites" class="admin-section">
+          <div class="section-controls">
+            <div class="search-bar">
+              <i data-lucide="search"></i>
+              <input type="text" id="siteSearch" placeholder="Search site titles, regions...">
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Site Title</th>
+                  <th>Host Artisan</th>
+                  <th>Location</th>
+                  <th>Entry Fee</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sitesTableBody">
+                <tr><td colspan="6" class="loading-td">Loading tourist sites...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 4. BOOKINGS SECTION -->
+        <section id="bookings" class="admin-section">
+          <div class="section-controls">
+            <div class="search-bar">
+              <i data-lucide="search"></i>
+              <input type="text" id="bookingSearch" placeholder="Search by customer or destination...">
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Tourist Site</th>
+                  <th>Visit Date</th>
+                  <th>Visitors</th>
+                  <th>Total Paid</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTableBody">
+                <tr><td colspan="7" class="loading-td">Loading bookings...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 5. REVIEWS SECTION -->
+        <section id="reviews" class="admin-section">
+          <div class="section-controls">
+            <div class="search-bar">
+              <i data-lucide="search"></i>
+              <input type="text" id="reviewSearch" placeholder="Search feedback or reviewer...">
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reviewer</th>
+                  <th>Artisan</th>
+                  <th>Rating</th>
+                  <th>Comment</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reviewsTableBody">
+                <tr><td colspan="6" class="loading-td">Loading community reviews...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 6. ANALYTICS SECTION -->
+        <section id="analytics" class="admin-section">
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <h3 id="totalUsers">0</h3>
+              <p>Total Users</p>
+            </div>
+            <div class="analytics-card">
+              <h3 id="totalArtisans">0</h3>
+              <p>Registered Artisans</p>
+            </div>
+            <div class="analytics-card">
+              <h3 id="totalSites">0</h3>
+              <p>Tourist Sites</p>
+            </div>
+            <div class="analytics-card">
+              <h3 id="totalBookings">0</h3>
+              <p>Confirmed Bookings</p>
+            </div>
+            <div class="analytics-card">
+              <h3 id="avgRating">0.0</h3>
+              <p>Platform Rating</p>
+            </div>
+            <div class="analytics-card">
+              <h3 id="totalRevenue">$0.00</h3>
+              <p>Gross Value</p>
+            </div>
+          </div>
+          <div class="analytics-details">
+            <div class="analytics-section">
+              <h3>Role Distribution</h3>
+              <div id="usersByRole"></div>
+            </div>
+            <div class="analytics-section">
+              <h3>Top Reviewed Artisans</h3>
+              <div id="topArtisans"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Edit Site (Admin Superpower) -->
+  <div id="adminEditSiteModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Edit Tourist Site Listing</h3>
+        <button class="btn-close" id="closeEditSiteModalBtn"><i data-lucide="x"></i></button>
+      </div>
+      <form id="adminEditSiteForm">
+        <input type="hidden" id="edit-site-id">
+        <div class="form-group">
+          <label for="edit-site-title">Site Title</label>
+          <input type="text" id="edit-site-title" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-site-desc">Description</label>
+          <textarea id="edit-site-desc" rows="3" required></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-site-location">Location</label>
+            <input type="text" id="edit-site-location" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-site-fee">Entry Fee ($)</label>
+            <input type="number" id="edit-site-fee" step="0.01" min="0" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" id="saveSiteBtn">Save Updates</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Password Reset Tool -->
+  <div id="resetPasswordModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Reset User Password</h3>
+        <button class="btn-close" id="closeResetModalBtn"><i data-lucide="x"></i></button>
+      </div>
+      <form id="resetPasswordForm">
+        <input type="hidden" id="reset-user-email">
+        <p class="muted-sub mb-3" id="resetUserTarget"></p>
+        <p class="notice-box">
+          You can dispatch an official recovery reset email to the account's registered address directly through Supabase Auth.
+        </p>
+        <button type="submit" class="btn btn-primary w-100" id="sendResetBtn">
+          <i data-lucide="key"></i>
+          <span>Send Password Reset Email</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Direct Admin Message Dispatcher -->
+  <div id="adminMsgModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Send Admin Message</h3>
+        <button class="btn-close" id="closeAdminMsgBtn"><i data-lucide="x"></i></button>
+      </div>
+      <form id="adminMsgForm">
+        <input type="hidden" id="msg-recipient-id">
+        <input type="hidden" id="msg-recipient-name">
+        <p class="muted-sub mb-3" id="msgRecipientTarget"></p>
+        <div class="form-group">
+          <label for="msg-subject">Message Subject</label>
+          <input type="text" id="msg-subject" placeholder="e.g. Account Notice / Booking Update" required>
+        </div>
+        <div class="form-group">
+          <label for="msg-body">Message Content</label>
+          <textarea id="msg-body" rows="4" placeholder="Write your message here..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" id="sendAdminMsgBtn">
+          <i data-lucide="send"></i>
+          <span>Send Message</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>

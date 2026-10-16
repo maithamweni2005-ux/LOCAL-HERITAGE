@@ -2,9 +2,9 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    # Runs at 06:00 UTC every 3 days (Mondays and Thursdays)
-    - cron: '0 6 * * 1,4'
-  workflow_dispatch: # Adds a manual "Run" button in GitHub UI for testing
+    # Runs daily at 06:00 UTC to ensure Supabase never hits inactivity threshold
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
   ping-database:
@@ -12,18 +12,19 @@ jobs:
     steps:
       - name: Send keep-alive query
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/tourist_sites?select=id&limit=1" \
+          URL="${{ secrets.SUPABASE_URL }}/rest/v1/tourist_sites?select=id&limit=1"
+
+          # Perform request and capture HTTP code
+          STATUS=$(curl -sS -L -o /dev/null -w "%{http_code}" -X GET "$URL" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
-          
+
           echo "Supabase returned status code: $STATUS"
 
-          # 200 = Success, 206 = Partial Content
+          # 200 = OK, 206 = Partial Content
           if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 206 ]; then
-            echo "Request failed or rejected"
+            echo "Keep-alive ping failed with HTTP status $STATUS"
             exit 1
           fi
 
-
-
+          echo "Keep-alive ping succeeded."

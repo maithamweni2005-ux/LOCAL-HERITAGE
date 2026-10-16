@@ -13,30 +13,45 @@ jobs:
       - name: Validate Secrets Exist
         run: |
           if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is missing in GitHub repository settings."
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is missing."
             exit 1
           fi
 
       - name: Send keep-alive query
         run: |
-          # Strip any accidental trailing slash from the URL
-          BASE_URL="${{ secrets.SUPABASE_URL }}"
-          CLEAN_URL="${BASE_URL%/}"
-          TARGET_URL="${CLEAN_URL}/rest/v1/tourist_sites?select=id&limit=1"
+          # 1. Normalize BASE_URL by stripping any accidental /rest/v1, /rest, or trailing slashes
+          RAW_URL="${{ secrets.SUPABASE_URL }}"
+          BASE_URL=$(echo "$RAW_URL" | sed -E 's#/rest(/v1)?/?$##' | sed -E 's#/$##')
 
-          # Execute curl, capture response body to response.txt and HTTP code to STATUS
+          TARGET_URL="${BASE_URL}/rest/v1/tourist_sites?select=id&limit=1"
+          echo "Pinging: $TARGET_URL"
+
+          # 2. Execute query
           STATUS=$(curl -sS -L -w "%{http_code}" -o response.txt -X GET "$TARGET_URL" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
 
           echo "Supabase HTTP status code: $STATUS"
 
-          # 200 = OK, 206 = Partial Content
-          if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 206 ]; then
-            echo "Request failed with status $STATUS. Server response:"
+          # 3. If REST succeeds (200 OK or 206 Partial Content)
+          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 206 ]; then
+            echo "Database keep-alive query succeeded."
             cat response.txt
-            exit 1
+            exit 0
           fi
 
-          echo "Ping successful. Response:"
+          # 4. Fallback: Ping the Auth Health endpoint if the table query had issues
+          echo "REST query returned $STATUS. Trying Auth Health fallback..."
+          HEALTH_STATUS=$(curl -sS -L -w "%{http_code}" -o response.txt -X GET "${BASE_URL}/auth/v1/health" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "Auth health status code: $HEALTH_STATUS"
+
+          if [ "$HEALTH_STATUS" -eq 200 ]; then
+            echo "Keep-alive succeeded via Auth Health service."
+            exit 0
+          fi
+
+          echo "All keep-alive attempts failed."
           cat response.txt
+          exit 1

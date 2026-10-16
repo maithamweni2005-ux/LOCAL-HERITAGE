@@ -13,7 +13,7 @@ jobs:
       - name: Send keep-alive query
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/opportunities?select=id&limit=1" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/tourist_sites?select=id&limit=1" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
           

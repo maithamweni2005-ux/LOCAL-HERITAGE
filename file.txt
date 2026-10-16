@@ -1,0 +1,3 @@
+sb_publishable_DG92Z-1xBSfVwoLQ4XDSpw_9gwOxPIs
+
+https://kxtvbokjihzmkabmpkre.supabase.co/rest/v1/

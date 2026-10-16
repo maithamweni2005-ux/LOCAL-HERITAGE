@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Local Heritage</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <h2>Admin Panel</h2>
+            </div>
+            <nav class="admin-nav">
+                <a href="#" class="admin-nav-item active" data-section="users">
+                    <span>👥</span> All Users
+                </a>
+                <a href="#" class="admin-nav-item" data-section="artisans">
+                    <span>👨‍🎨</span> Artisans
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sites">
+                    <span>🏛️</span> Sites
+                </a>
+                <a href="#" class="admin-nav-item" data-section="reviews">
+                    <span>⭐</span> Reviews
+                </a>
+                <a href="#" class="admin-nav-item" data-section="analytics">
+                    <span>📊</span> Analytics
+                </a>
+            </nav>
+            <button class="logout-btn" id="adminLogoutBtn">Logout</button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Header -->
+            <header class="admin-header">
+                <h1 id="adminPageTitle">All Users</h1>
+                <div class="admin-user-info" id="adminUserInfo"></div>
+            </header>
+
+            <!-- Content -->
+            <div class="admin-content">
+                <!-- Users Section -->
+                <section id="users" class="admin-section active">
+                    <div class="section-controls">
+                        <div class="search-bar">
+                            <input type="text" id="userSearch" placeholder="Search users...">
+                        </div>
+                        <div class="filter-controls">
+                            <select id="roleFilter">
+                                <option value="">All Roles</option>
+                                <option value="customer">Customer</option>
+                                <option value="artisan">Artisan</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="usersTable" class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Phone</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr><td colspan="7">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Artisans Section -->
+                <section id="artisans" class="admin-section">
+                    <div class="section-controls">
+                        <div class="search-bar">
+                            <input type="text" id="artisanSearch" placeholder="Search artisans...">
+                        </div>
+                    </div>
+                    <div id="artisansTable" class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Business Name</th>
+                                    <th>Owner</th>
+                                    <th>Category</th>
+                                    <th>Location</th>
+                                    <th>Sites</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="artisansTableBody">
+                                <tr><td colspan="7">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Sites Section -->
+                <section id="sites" class="admin-section">
+                    <div class="section-controls">
+                        <div class="search-bar">
+                            <input type="text" id="siteSearch" placeholder="Search sites...">
+                        </div>
+                    </div>
+                    <div id="sitesTable" class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Artisan</th>
+                                    <th>Location</th>
+                                    <th>Entry Fee</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sitesTableBody">
+                                <tr><td colspan="8">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Reviews Section -->
+                <section id="reviews" class="admin-section">
+                    <div class="section-controls">
+                        <div class="search-bar">
+                            <input type="text" id="reviewSearch" placeholder="Search reviews...">
+                        </div>
+                    </div>
+                    <div id="reviewsTable" class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Customer</th>
+                                    <th>Artisan</th>
+                                    <th>Rating</th>
+                                    <th>Comment</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reviewsTableBody">
+                                <tr><td colspan="7">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Analytics Section -->
+                <section id="analytics" class="admin-section">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                        <div class="analytics-card">
+                            <h3 id="totalArtisans">0</h3>
+                            <p>Total Artisans</p>
+                        </div>
+                        <div class="analytics-card">
+                            <h3 id="totalSites">0</h3>
+                            <p>Total Sites</p>
+                        </div>
+                        <div class="analytics-card">
+                            <h3 id="totalReviews">0</h3>
+                            <p>Total Reviews</p>
+                        </div>
+                        <div class="analytics-card">
+                            <h3 id="avgRating">0</h3>
+                            <p>Average Rating</p>
+                        </div>
+                        <div class="analytics-card">
+                            <h3 id="totalRevenue">$0</h3>
+                            <p>Total Revenue (Fees)</p>
+                        </div>
+                    </div>
+                    <div class="analytics-details">
+                        <div class="analytics-section">
+                            <h3>Users by Role</h3>
+                            <div id="usersByRole"></div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3>Top Artisans (by reviews)</h3>
+                            <div id="topArtisans"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Details Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>User Details</h2>
+            <div id="userDetails"></div>
+            <div style="margin-top: 20px;">
+                <button class="btn-danger" id="deleteUserBtn">Delete User</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

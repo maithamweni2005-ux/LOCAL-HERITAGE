@@ -1,6 +1,6 @@
 # Local Heritage & Tourism Guide
 
-Local Heritage is a lightweight web application designed to connect travelers with local Kenyan artisans, cultural workshops, and community-based tourist destinations. The platform enables visitors to discover cultural sites, review artisan experiences, and book visits with direct communication channels.
+Local Heritage is a lightweight web application designed to connect travelers with local Kenyan artisans, cultural workshops, and community-based tourist destinations. The platform enables visitors to discover cultural sites, review artisan experiences, and book visits with direct communication channels. https://maithamweni2005-ux.github.io/LOCAL-HERITAGE/
 
 ---
 

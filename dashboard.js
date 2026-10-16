@@ -1,6 +1,8 @@
 // =============================================
-// GLOBAL STATE
+// GLOBAL CONFIG & STATE
 // =============================================
+const PAYSTACK_PUBLIC_KEY = 'pk_test_f9bc53c6f5640bb20ca81bc3a9f827c82e232459';
+
 let activeUser = null;
 let activeArtisan = null;
 let activeMode = 'customer';
@@ -10,8 +12,8 @@ let cachedReviews = [];
 let currentBookingSite = null;
 
 // Direct Chat State
-let activeChatArtisan = null;
-let chatMessages = {};
+let activeChatPartner = null; // { id, name, userId }
+let messageSubscription = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.lucide) lucide.createIcons();
@@ -21,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMobileMenu();
   initSearch();
   initLogout();
+  attachContainerEventDelegation();
 });
 
 // =============================================
@@ -58,49 +61,12 @@ async function initDashboard() {
       userInfoEl.textContent = `${activeUser.first_name} (${activeMode.toUpperCase()})`;
     }
 
-    await Promise.all([loadReviewsCache(), loadSitesFeed()]);
+    await loadReviewsCache();
+    await loadSitesFeed();
+    await loadChatContacts();
+    setupRealtimeMessages();
   } catch (err) {
     console.error('Init error:', err);
-  }
-}
-
-// =============================================
-// NAVIGATION & VIEW SWITCHING
-// =============================================
-function initNavigation() {
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      const sectionKey = btn.dataset.section;
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-
-      const target = document.getElementById(sectionKey);
-      if (target) target.classList.add('active');
-
-      const sidebar = document.getElementById('sidebar');
-      if (sidebar) sidebar.classList.remove('open');
-
-      if (sectionKey === 'feed') loadSitesFeed();
-      if (sectionKey === 'profile') loadProfileData();
-    });
-  });
-}
-
-function initMobileMenu() {
-  const btn = document.getElementById('mobileMenuBtn');
-  const sidebar = document.getElementById('sidebar');
-  if (btn && sidebar) {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sidebar.classList.toggle('open');
-    });
-    document.addEventListener('click', (e) => {
-      if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
-        sidebar.classList.remove('open');
-      }
-    });
   }
 }
 
@@ -116,7 +82,7 @@ async function loadReviewsCache() {
     if (error) throw error;
     cachedReviews = reviews || [];
   } catch (err) {
-    console.error('Failed to cache reviews:', err);
+    console.error('Failed to load reviews cache:', err);
   }
 }
 
@@ -128,7 +94,9 @@ async function loadSitesFeed(filterTerm = '') {
   if (!container) return;
 
   try {
-    let query = supabaseClient.from('tourist_sites').select('*, artisans(id, business_name, location)');
+    let query = supabaseClient
+      .from('tourist_sites')
+      .select('*, artisans(id, user_id, business_name, location)');
 
     if (activeMode === 'artisan' && activeArtisan) {
       query = query.eq('artisan_id', activeArtisan.id);
@@ -155,17 +123,21 @@ async function loadSitesFeed(filterTerm = '') {
     }
 
     container.innerHTML = filtered.map(site => {
+      const artisanId = site.artisan_id || site.artisans?.id || '';
+      const artisanUserId = site.artisans?.user_id || '';
       const artisanName = site.artisans?.business_name || 'Artisan Host';
-      const artisanId = site.artisan_id;
+      const siteId = site.id;
+      const siteTitle = site.title || site.name || 'Heritage Destination';
+      const entryFee = parseFloat(site.entry_fee || 0);
 
       const artisanReviews = cachedReviews.filter(r => r.artisan_id === artisanId);
       const count = artisanReviews.length;
 
       return `
-        <article class="site-card">
+        <article class="site-card" data-site-id="${siteId}">
           <div class="site-card-header">
             <div>
-              <h3>${escapeHtml(site.title || site.name)}</h3>
+              <h3>${escapeHtml(siteTitle)}</h3>
               <div class="site-location">
                 <i data-lucide="map-pin"></i>
                 <span>${escapeHtml(site.location || 'Kenya')}</span>
@@ -177,7 +149,9 @@ async function loadSitesFeed(filterTerm = '') {
 
           <div class="artisan-badge">
             <span class="artisan-name">${escapeHtml(artisanName)}</span>
-            <button type="button" class="reviews-trigger" onclick="openReadReviewsModal('${artisanId}', '${escapeHtml(artisanName)}')">
+            <button type="button" class="reviews-trigger action-read-reviews" 
+              data-artisan-id="${artisanId}" 
+              data-artisan-name="${escapeHtml(artisanName)}">
               <i data-lucide="star"></i>
               <span>${count} review${count === 1 ? '' : 's'}</span>
             </button>
@@ -185,25 +159,34 @@ async function loadSitesFeed(filterTerm = '') {
 
           <div class="site-card-footer">
             <div class="site-fee">
-              Fee: <strong>$${parseFloat(site.entry_fee || 0).toFixed(2)}</strong>
+              Fee: <strong>KES ${entryFee.toLocaleString()}</strong>
             </div>
 
             <div class="card-actions">
               ${activeMode === 'customer' ? `
-                <button type="button" class="btn btn-outline btn-small" onclick="openWriteReviewModal('${artisanId}', '${escapeHtml(artisanName)}')">
+                <button type="button" class="btn btn-outline btn-small action-write-review"
+                  data-artisan-id="${artisanId}"
+                  data-site-id="${siteId}"
+                  data-artisan-name="${escapeHtml(artisanName)}">
                   <i data-lucide="star"></i>
                   <span>Rate</span>
                 </button>
-                <button type="button" class="btn btn-primary btn-small" onclick="openBookingModal('${site.id}', '${artisanId}', '${escapeHtml(site.title || site.name)}', '${escapeHtml(artisanName)}',${parseFloat(site.entry_fee || 0)})">
+                <button type="button" class="btn btn-primary btn-small action-book-site"
+                  data-site-id="${siteId}"
+                  data-artisan-id="${artisanId}"
+                  data-artisan-user-id="${artisanUserId}"
+                  data-site-title="${escapeHtml(siteTitle)}"
+                  data-artisan-name="${escapeHtml(artisanName)}"
+                  data-entry-fee="${entryFee}">
                   <i data-lucide="calendar"></i>
                   <span>Book & Pay</span>
                 </button>
               ` : `
-                <button type="button" class="btn btn-outline btn-small" onclick="openEditSiteModal('${site.id}')">
+                <button type="button" class="btn btn-outline btn-small action-edit-site" data-site-id="${siteId}">
                   <i data-lucide="edit-3"></i>
                   <span>Edit</span>
                 </button>
-                <button type="button" class="btn btn-danger btn-small" onclick="deleteSite('${site.id}')">
+                <button type="button" class="btn btn-danger btn-small action-delete-site" data-site-id="${siteId}">
                   <i data-lucide="trash-2"></i>
                   <span>Delete</span>
                 </button>
@@ -220,20 +203,62 @@ async function loadSitesFeed(filterTerm = '') {
   }
 }
 
-// Search Filter
-function initSearch() {
-  const searchInput = document.getElementById('siteSearchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      loadSitesFeed(e.target.value.trim());
-    });
-  }
+// =============================================
+// CARD EVENT DELEGATION
+// =============================================
+function attachContainerEventDelegation() {
+  const container = document.getElementById('sitesFeedContainer');
+  if (!container) return;
+
+  container.addEventListener('click', (e) => {
+    const readBtn = e.target.closest('.action-read-reviews');
+    if (readBtn) {
+      e.preventDefault();
+      openReadReviewsModal(readBtn.dataset.artisanId, readBtn.dataset.artisanName);
+      return;
+    }
+
+    const writeBtn = e.target.closest('.action-write-review');
+    if (writeBtn) {
+      e.preventDefault();
+      openWriteReviewModal(writeBtn.dataset.artisanId, writeBtn.dataset.siteId, writeBtn.dataset.artisanName);
+      return;
+    }
+
+    const bookBtn = e.target.closest('.action-book-site');
+    if (bookBtn) {
+      e.preventDefault();
+      openBookingModal(
+        bookBtn.dataset.siteId,
+        bookBtn.dataset.artisanId,
+        bookBtn.dataset.artisanUserId,
+        bookBtn.dataset.siteTitle,
+        bookBtn.dataset.artisanName,
+        parseFloat(bookBtn.dataset.entryFee) || 0
+      );
+      return;
+    }
+
+    const editBtn = e.target.closest('.action-edit-site');
+    if (editBtn) {
+      e.preventDefault();
+      openEditSiteModal(editBtn.dataset.siteId);
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.action-delete-site');
+    if (deleteBtn) {
+      e.preventDefault();
+      deleteSite(deleteBtn.dataset.siteId);
+      return;
+    }
+  });
 }
 
 // =============================================
-// REVIEWS MODALS
+// REVIEWS
 // =============================================
-window.openReadReviewsModal = function(artisanId, artisanName) {
+function openReadReviewsModal(artisanId, artisanName) {
   const modal = document.getElementById('readReviewsModal');
   const title = document.getElementById('readReviewsTitle');
   const subtitle = document.getElementById('readReviewsSubtitle');
@@ -247,7 +272,7 @@ window.openReadReviewsModal = function(artisanId, artisanName) {
     container.innerHTML = '<p class="muted">No reviews posted for this artisan yet.</p>';
   } else {
     container.innerHTML = filtered.map(r => {
-      const reviewerName = r.users ? `${r.users.first_name} ${r.users.last_name}` : 'Traveler';
+      const reviewerName = r.users ? `${r.users.first_name} ${r.users.last_name}` : 'Verified Traveler';
       const stars = renderStarIcons(r.rating || 5);
       return `
         <div class="review-card-item">
@@ -264,20 +289,21 @@ window.openReadReviewsModal = function(artisanId, artisanName) {
 
   modal.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
-};
+}
 
-window.openWriteReviewModal = function(artisanId, artisanName) {
+function openWriteReviewModal(artisanId, siteId, artisanName) {
   document.getElementById('writeReviewForm').reset();
   document.getElementById('review-artisan-id').value = artisanId;
+  document.getElementById('review-site-id').value = siteId || '';
   document.getElementById('writeReviewTarget').textContent = `Artisan: ${artisanName}`;
   document.getElementById('writeReviewModal').classList.remove('hidden');
-};
+}
 
 // =============================================
-// BOOKING & DIRECT CHAT BRIDGE
+// BOOKING & PAYSTACK CHECKOUT
 // =============================================
-window.openBookingModal = function(siteId, artisanId, siteTitle, artisanName, fee) {
-  currentBookingSite = { siteId, artisanId, siteTitle, artisanName, fee };
+function openBookingModal(siteId, artisanId, artisanUserId, siteTitle, artisanName, fee) {
+  currentBookingSite = { siteId, artisanId, artisanUserId, siteTitle, artisanName, fee };
 
   document.getElementById('bookForm').reset();
   document.getElementById('book-site-id').value = siteId;
@@ -287,29 +313,174 @@ window.openBookingModal = function(siteId, artisanId, siteTitle, artisanName, fe
   document.getElementById('bookModalTitle').textContent = `Book: ${siteTitle}`;
   document.getElementById('bookModalArtisan').textContent = `Hosted by: ${artisanName}`;
 
-  document.getElementById('bookFeePerPerson').textContent = `$${fee.toFixed(2)}`;
-  document.getElementById('bookTotalAmount').textContent = `$${fee.toFixed(2)}`;
+  document.getElementById('bookFeePerPerson').textContent = `KES ${fee.toLocaleString()}`;
+  document.getElementById('bookTotalAmount').textContent = `KES ${fee.toLocaleString()}`;
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   document.getElementById('book-date').value = tomorrow.toISOString().split('T')[0];
 
   document.getElementById('bookModal').classList.remove('hidden');
-};
+}
 
 function initBookingCalculator() {
   const visitorsInput = document.getElementById('book-visitors');
   if (visitorsInput) {
     visitorsInput.addEventListener('input', () => {
-      const visitors = parseInt(visitorsInput.value, 10) || 1;
+      const visitors = Math.max(1, parseInt(visitorsInput.value, 10) || 1);
       const fee = currentBookingSite?.fee || 0;
       const total = fee * visitors;
-      document.getElementById('bookTotalAmount').textContent = `$${total.toFixed(2)}`;
+      document.getElementById('bookTotalAmount').textContent = `KES ${total.toLocaleString()}`;
     });
   }
 }
 
-function triggerDirectChat(artisanId, artisanName) {
+function handlePaystackPayment() {
+  const siteId = document.getElementById('book-site-id').value;
+  const artisanId = document.getElementById('book-artisan-id').value;
+  const artisanUserId = currentBookingSite?.artisanUserId;
+  const artisanName = document.getElementById('book-artisan-name').value;
+  const visitDate = document.getElementById('book-date').value;
+  const visitors = parseInt(document.getElementById('book-visitors').value, 10) || 1;
+  const fee = currentBookingSite?.fee || 0;
+  const totalAmount = fee * visitors;
+
+  if (typeof PaystackPop === 'undefined') {
+    alert('Paystack SDK failed to load. Please verify your connection.');
+    return;
+  }
+
+  if (totalAmount <= 0) {
+    recordBookingInDatabase({
+      siteId,
+      artisanId,
+      artisanUserId,
+      artisanName,
+      visitDate,
+      visitors,
+      totalAmount: 0,
+      reference: 'FREE-' + Date.now()
+    });
+    return;
+  }
+
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: activeUser.email,
+    amount: Math.round(totalAmount * 100),
+    currency: 'KES',
+    ref: 'LH-' + Math.floor((Math.random() * 1000000000) + 1),
+    callback: function(response) {
+      recordBookingInDatabase({
+        siteId,
+        artisanId,
+        artisanUserId,
+        artisanName,
+        visitDate,
+        visitors,
+        totalAmount,
+        reference: response.reference
+      });
+    },
+    onClose: function() {
+      alert('Transaction was cancelled.');
+    }
+  });
+
+  handler.openIframe();
+}
+
+async function recordBookingInDatabase(bookingData) {
+  try {
+    await supabaseClient.from('bookings').insert([{
+      customer_id: activeUser.id,
+      site_id: bookingData.siteId,
+      artisan_id: bookingData.artisanId,
+      visit_date: bookingData.visitDate,
+      visitors: bookingData.visitors,
+      total_amount: bookingData.totalAmount,
+      status: 'confirmed'
+    }]);
+
+    document.getElementById('bookModal').classList.add('hidden');
+    alert(`Payment successful! Reference: ${bookingData.reference}. Opening direct chat.`);
+    
+    // Switch to direct chat
+    startChatWithUser(bookingData.artisanUserId, bookingData.artisanName);
+  } catch (err) {
+    console.error('Booking save note:', err);
+    startChatWithUser(bookingData.artisanUserId, bookingData.artisanName);
+  }
+}
+
+// =============================================
+// DATABASE-BACKED PERSISTENT CHAT
+// =============================================
+async function loadChatContacts() {
+  const container = document.getElementById('chatContactsList');
+  if (!container) return;
+
+  try {
+    // Fetch unique contacts from messages where user is sender or recipient
+    const { data: sentMessages } = await supabaseClient
+      .from('messages')
+      .select('recipient_id, users!messages_recipient_id_fkey(id, first_name, last_name, role)')
+      .eq('sender_id', activeUser.id);
+
+    const { data: receivedMessages } = await supabaseClient
+      .from('messages')
+      .select('sender_id, users!messages_sender_id_fkey(id, first_name, last_name, role)')
+      .eq('recipient_id', activeUser.id);
+
+    const contactsMap = new Map();
+
+    sentMessages?.forEach(m => {
+      if (m.users && m.users.id !== activeUser.id) {
+        contactsMap.set(m.users.id, {
+          userId: m.users.id,
+          name: `${m.users.first_name} ${m.users.last_name}`,
+          role: m.users.role
+        });
+      }
+    });
+
+    receivedMessages?.forEach(m => {
+      if (m.users && m.users.id !== activeUser.id) {
+        contactsMap.set(m.users.id, {
+          userId: m.users.id,
+          name: `${m.users.first_name} ${m.users.last_name}`,
+          role: m.users.role
+        });
+      }
+    });
+
+    const contacts = Array.from(contactsMap.values());
+
+    if (!contacts.length) {
+      container.innerHTML = '<p class="muted" style="padding:16px;">No conversations yet. Book a site to begin chat.</p>';
+      return;
+    }
+
+    container.innerHTML = contacts.map(c => `
+      <div class="chat-contact-item ${activeChatPartner?.userId === c.userId ? 'active' : ''}" 
+        onclick="selectChatPartner('${c.userId}', '${escapeHtml(c.name)}', '${escapeHtml(c.role)}')">
+        <div class="chat-contact-name">${escapeHtml(c.name)}</div>
+        <small class="muted-small">${c.role.toUpperCase()}</small>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.warn('Could not load chat contacts list:', err.message);
+  }
+}
+
+function startChatWithUser(recipientUserId, recipientName) {
+  if (!recipientUserId) {
+    alert('Artisan direct user account is not linked. Check back shortly.');
+    return;
+  }
+
+  // Switch navigation view
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const chatNavBtn = document.querySelector('[data-section="chat"]');
   if (chatNavBtn) chatNavBtn.classList.add('active');
@@ -317,136 +488,115 @@ function triggerDirectChat(artisanId, artisanName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('chat').classList.add('active');
 
-  activeChatArtisan = { id: artisanId, name: artisanName };
-  renderChatContacts();
-  selectChatContact(artisanId, artisanName);
-
-  if (!chatMessages[artisanId]) {
-    chatMessages[artisanId] = [];
-  }
-
-  chatMessages[artisanId].push({
-    sender: 'artisan',
-    text: `Hello ${activeUser.first_name}! Your booking has been confirmed. Feel free to ask questions about your visit directions, timing, or crafts.`
-  });
-
-  renderChatWindow();
+  selectChatPartner(recipientUserId, recipientName, 'Host Artisan');
 }
 
-function renderChatContacts() {
-  const container = document.getElementById('chatContactsList');
-  if (!activeChatArtisan) {
-    container.innerHTML = '<p class="muted" style="padding:16px;">No chats initiated yet.</p>';
-    return;
-  }
+window.selectChatPartner = async function(userId, name, role = 'User') {
+  activeChatPartner = { userId, name, role };
 
-  container.innerHTML = `
-    <div class="chat-contact-item active" onclick="selectChatContact('${activeChatArtisan.id}', '${escapeHtml(activeChatArtisan.name)}')">
-      <div class="chat-contact-name">${escapeHtml(activeChatArtisan.name)}</div>
-      <small class="muted-small">Site Host</small>
-    </div>
-  `;
-}
-
-window.selectChatContact = function(id, name) {
-  activeChatArtisan = { id, name };
   document.getElementById('chatRecipientName').textContent = name;
-  document.getElementById('chatRecipientRole').textContent = 'Host Artisan (Direct Connection)';
+  document.getElementById('chatRecipientRole').textContent = `${role} (Direct)`;
   document.getElementById('chatMessageInput').disabled = false;
   document.getElementById('sendMsgBtn').disabled = false;
-  renderChatWindow();
+
+  await loadMessagesForActivePartner();
 };
 
-function renderChatWindow() {
+async function loadMessagesForActivePartner() {
   const box = document.getElementById('chatMessagesBox');
-  if (!activeChatArtisan || !chatMessages[activeChatArtisan.id]) {
-    box.innerHTML = `<div class="chat-placeholder"><p>No messages yet.</p></div>`;
-    return;
+  if (!box || !activeChatPartner) return;
+
+  try {
+    const { data: msgs, error } = await supabaseClient
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${activeUser.id},recipient_id.eq.${activeChatPartner.userId}),and(sender_id.eq.${activeChatPartner.userId},recipient_id.eq.${activeUser.id})`)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    if (!msgs || !msgs.length) {
+      box.innerHTML = `<div class="chat-placeholder"><p>No messages yet. Send a message to start conversation.</p></div>`;
+      return;
+    }
+
+    box.innerHTML = msgs.map(m => `
+      <div class="message-bubble ${m.sender_id === activeUser.id ? 'sent' : 'received'}">
+        ${escapeHtml(m.message_text)}
+      </div>
+    `).join('');
+
+    box.scrollTop = box.scrollHeight;
+  } catch (err) {
+    console.error('Failed to load messages from database:', err);
   }
-
-  box.innerHTML = chatMessages[activeChatArtisan.id].map(m => `
-    <div class="message-bubble ${m.sender === 'customer' ? 'sent' : 'received'}">
-      ${escapeHtml(m.text)}
-    </div>
-  `).join('');
-
-  box.scrollTop = box.scrollHeight;
 }
 
-const chatForm = document.getElementById('chatInputForm');
-if (chatForm) {
-  chatForm.addEventListener('submit', (e) => {
+// Message Send Handler
+const chatInputForm = document.getElementById('chatInputForm');
+if (chatInputForm) {
+  chatInputForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('chatMessageInput');
     const text = input.value.trim();
-    if (!text || !activeChatArtisan) return;
 
-    if (!chatMessages[activeChatArtisan.id]) {
-      chatMessages[activeChatArtisan.id] = [];
+    if (!text || !activeChatPartner) return;
+
+    try {
+      input.value = '';
+
+      const { error } = await supabaseClient
+        .from('messages')
+        .insert([{
+          sender_id: activeUser.id,
+          recipient_id: activeChatPartner.userId,
+          message_text: text
+        }]);
+
+      if (error) throw error;
+
+      await loadMessagesForActivePartner();
+      await loadChatContacts();
+    } catch (err) {
+      alert(`Message could not be sent: ${err.message}`);
     }
-
-    chatMessages[activeChatArtisan.id].push({ sender: 'customer', text });
-    input.value = '';
-    renderChatWindow();
-
-    setTimeout(() => {
-      chatMessages[activeChatArtisan.id].push({
-        sender: 'artisan',
-        text: "Thanks for reaching out! I've received your note and look forward to hosting you."
-      });
-      renderChatWindow();
-    }, 1000);
   });
 }
 
-// =============================================
-// ARTISAN SITE CRUD
-// =============================================
-window.openEditSiteModal = function(siteId) {
-  const site = cachedSites.find(s => s.id === siteId);
-  if (!site) return;
+function setupRealtimeMessages() {
+  if (messageSubscription) return;
 
-  document.getElementById('site-id').value = site.id;
-  document.getElementById('site-title').value = site.title || site.name || '';
-  document.getElementById('site-description').value = site.description || '';
-  document.getElementById('site-location').value = site.location || '';
-  document.getElementById('site-fee').value = site.entry_fee || '';
-
-  document.getElementById('siteModalTitle').textContent = 'Edit Site Listing';
-  document.getElementById('siteModal').classList.remove('hidden');
-};
-
-window.deleteSite = async function(siteId) {
-  if (!confirm('Are you sure you want to delete this tourist site?')) return;
-  try {
-    const { error } = await supabaseClient.from('tourist_sites').delete().eq('id', siteId);
-    if (error) throw error;
-    await loadSitesFeed();
-  } catch (err) {
-    alert(`Delete failed: ${err.message}`);
-  }
-};
+  messageSubscription = supabaseClient
+    .channel('public:messages')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      const newMsg = payload.new;
+      if (
+        activeChatPartner &&
+        (newMsg.sender_id === activeChatPartner.userId || newMsg.recipient_id === activeChatPartner.userId)
+      ) {
+        loadMessagesForActivePartner();
+      }
+      loadChatContacts();
+    })
+    .subscribe();
+}
 
 // =============================================
-// ALL MODAL CONTROLS & SUBMISSIONS
+// MODAL CONTROLS & SUBMIT HANDLERS
 // =============================================
 function initModals() {
   initBookingCalculator();
 
-  const closeReadReviewsBtn = document.getElementById('closeReadReviewsBtn');
-  if (closeReadReviewsBtn) {
-    closeReadReviewsBtn.addEventListener('click', () => {
-      document.getElementById('readReviewsModal').classList.add('hidden');
-    });
-  }
+  // Read reviews close
+  document.getElementById('closeReadReviewsBtn')?.addEventListener('click', () => {
+    document.getElementById('readReviewsModal').classList.add('hidden');
+  });
 
+  // Write review close & submit
   const writeReviewModal = document.getElementById('writeReviewModal');
-  const closeWriteReviewBtn = document.getElementById('closeWriteReviewBtn');
-  if (closeWriteReviewBtn) {
-    closeWriteReviewBtn.addEventListener('click', () => {
-      writeReviewModal.classList.add('hidden');
-    });
-  }
+  document.getElementById('closeWriteReviewBtn')?.addEventListener('click', () => {
+    writeReviewModal.classList.add('hidden');
+  });
 
   const writeReviewForm = document.getElementById('writeReviewForm');
   if (writeReviewForm) {
@@ -457,19 +607,25 @@ function initModals() {
 
       try {
         const artisanId = document.getElementById('review-artisan-id').value;
+        const siteId = document.getElementById('review-site-id').value || null;
         const rating = parseInt(document.getElementById('review-rating-select').value, 10);
         const comment = document.getElementById('review-comment-text').value.trim();
 
-        const { error } = await supabaseClient.from('reviews').insert([{
+        // Dynamically build payload
+        const payload = {
           customer_id: activeUser.id,
           artisan_id: artisanId,
           rating,
           comment
-        }]);
+        };
+        if (siteId) {
+          payload.site_id = siteId;
+        }
 
+        const { error } = await supabaseClient.from('reviews').insert([payload]);
         if (error) throw error;
 
-        alert('Thank you! Your review has been recorded.');
+        alert('Thank you! Your review has been submitted.');
         writeReviewModal.classList.add('hidden');
         await loadReviewsCache();
         await loadSitesFeed();
@@ -481,27 +637,21 @@ function initModals() {
     });
   }
 
+  // Booking submit
   const bookModal = document.getElementById('bookModal');
-  const closeBookModalBtn = document.getElementById('closeBookModalBtn');
-  if (closeBookModalBtn) {
-    closeBookModalBtn.addEventListener('click', () => {
-      bookModal.classList.add('hidden');
-    });
-  }
+  document.getElementById('closeBookModalBtn')?.addEventListener('click', () => {
+    bookModal.classList.add('hidden');
+  });
 
   const bookForm = document.getElementById('bookForm');
   if (bookForm) {
     bookForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const artisanId = document.getElementById('book-artisan-id').value;
-      const artisanName = document.getElementById('book-artisan-name').value;
-
-      bookModal.classList.add('hidden');
-      alert('Payment confirmed! Opening direct chat with the artisan.');
-      triggerDirectChat(artisanId, artisanName);
+      handlePaystackPayment();
     });
   }
 
+  // Site create / edit modal
   const siteModal = document.getElementById('siteModal');
   const openAddSiteBtn = document.getElementById('openAddSiteBtn');
   if (openAddSiteBtn) {
@@ -513,12 +663,9 @@ function initModals() {
     });
   }
 
-  const closeSiteModalBtn = document.getElementById('closeSiteModalBtn');
-  if (closeSiteModalBtn) {
-    closeSiteModalBtn.addEventListener('click', () => {
-      siteModal.classList.add('hidden');
-    });
-  }
+  document.getElementById('closeSiteModalBtn')?.addEventListener('click', () => {
+    siteModal.classList.add('hidden');
+  });
 
   const siteForm = document.getElementById('siteForm');
   if (siteForm) {
@@ -557,20 +704,14 @@ function initModals() {
     });
   }
 
+  // Map modal
   const mapModal = document.getElementById('mapModal');
-  const openMapBtn = document.getElementById('openMapBtn');
-  const closeMapBtn = document.getElementById('closeMapBtn');
-
-  if (openMapBtn) {
-    openMapBtn.addEventListener('click', () => {
-      mapModal.classList.remove('hidden');
-    });
-  }
-  if (closeMapBtn) {
-    closeMapBtn.addEventListener('click', () => {
-      mapModal.classList.add('hidden');
-    });
-  }
+  document.getElementById('openMapBtn')?.addEventListener('click', () => {
+    mapModal.classList.remove('hidden');
+  });
+  document.getElementById('closeMapBtn')?.addEventListener('click', () => {
+    mapModal.classList.add('hidden');
+  });
 
   [document.getElementById('readReviewsModal'), writeReviewModal, bookModal, siteModal, mapModal].forEach(m => {
     if (m) {
@@ -582,8 +723,80 @@ function initModals() {
 }
 
 // =============================================
-// PROFILE HANDLING
+// SITE CRUD & NAVIGATION HELPERS
 // =============================================
+function openEditSiteModal(siteId) {
+  const site = cachedSites.find(s => s.id === siteId);
+  if (!site) return;
+
+  document.getElementById('site-id').value = site.id;
+  document.getElementById('site-title').value = site.title || site.name || '';
+  document.getElementById('site-description').value = site.description || '';
+  document.getElementById('site-location').value = site.location || '';
+  document.getElementById('site-fee').value = site.entry_fee || '';
+
+  document.getElementById('siteModalTitle').textContent = 'Edit Site Listing';
+  document.getElementById('siteModal').classList.remove('hidden');
+}
+
+async function deleteSite(siteId) {
+  if (!confirm('Are you sure you want to delete this tourist site?')) return;
+  try {
+    const { error } = await supabaseClient.from('tourist_sites').delete().eq('id', siteId);
+    if (error) throw error;
+    await loadSitesFeed();
+  } catch (err) {
+    alert(`Delete failed: ${err.message}`);
+  }
+}
+
+function initNavigation() {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const sectionKey = btn.dataset.section;
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+
+      const target = document.getElementById(sectionKey);
+      if (target) target.classList.add('active');
+
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+
+      if (sectionKey === 'feed') loadSitesFeed();
+      if (sectionKey === 'chat') loadChatContacts();
+      if (sectionKey === 'profile') loadProfileData();
+    });
+  });
+}
+
+function initMobileMenu() {
+  const btn = document.getElementById('mobileMenuBtn');
+  const sidebar = document.getElementById('sidebar');
+  if (btn && sidebar) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+}
+
+function initSearch() {
+  const searchInput = document.getElementById('siteSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      loadSitesFeed(e.target.value.trim());
+    });
+  }
+}
+
 function loadProfileData() {
   document.getElementById('profile-first-name').value = activeUser.first_name || '';
   document.getElementById('profile-last-name').value = activeUser.last_name || '';
@@ -641,14 +854,9 @@ if (profileForm) {
   });
 }
 
-// =============================================
-// HELPERS
-// =============================================
 function initLogout() {
   const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', logout);
-  }
+  if (logoutBtn) logoutBtn.addEventListener('click', logout);
 }
 
 function renderStarIcons(rating) {

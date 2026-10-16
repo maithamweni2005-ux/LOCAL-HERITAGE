@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sites Feed - Local Heritage</title>
   <link rel="stylesheet" href="dashboard.css">
+  
+  <!-- Supabase JS & Lucide Icons -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Paystack Inline Popup JS -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
 </head>
 <body>
   <div class="layout">
@@ -68,7 +73,7 @@
       </header>
 
       <div class="content-area">
-        <!-- Section: SITES FEED (Direct default) -->
+        <!-- Section: SITES FEED -->
         <section id="feed" class="view active">
           <div class="feed-controls">
             <div class="search-box">
@@ -144,7 +149,6 @@
                 <input type="tel" id="profile-phone">
               </div>
 
-              <!-- Artisan specific fields -->
               <div id="artisan-fields" style="display:none;">
                 <div class="form-group">
                   <label for="profile-business-name">Business / Workshop Name</label>
@@ -185,9 +189,7 @@
           <i data-lucide="x"></i>
         </button>
       </div>
-      <div class="modal-body" id="readReviewsList">
-        <!-- Reviews loaded dynamically -->
-      </div>
+      <div class="modal-body" id="readReviewsList"></div>
     </div>
   </div>
 
@@ -202,6 +204,7 @@
       </div>
       <form id="writeReviewForm">
         <input type="hidden" id="review-artisan-id">
+        <input type="hidden" id="review-site-id">
         <p class="muted-small mb-2" id="writeReviewTarget"></p>
         <div class="form-group">
           <label for="review-rating-select">Rating (1 to 5 Stars)</label>
@@ -250,16 +253,16 @@
         <div class="booking-summary-box">
           <div class="summary-line">
             <span>Entry Fee per Person:</span>
-            <span id="bookFeePerPerson">$0.00</span>
+            <span id="bookFeePerPerson">KES 0.00</span>
           </div>
           <div class="summary-line total">
             <strong>Total Amount:</strong>
-            <strong id="bookTotalAmount">$0.00</strong>
+            <strong id="bookTotalAmount">KES 0.00</strong>
           </div>
         </div>
         <button type="submit" class="btn btn-primary w-100" id="payBookingBtn">
           <i data-lucide="credit-card"></i>
-          <span>Pay & Open Direct Chat</span>
+          <span>Pay with Paystack (KES)</span>
         </button>
       </form>
     </div>
@@ -290,8 +293,8 @@
             <input type="text" id="site-location" placeholder="e.g. Voi, Kenya" required>
           </div>
           <div class="form-group">
-            <label for="site-fee">Entry Fee ($)</label>
-            <input type="number" id="site-fee" step="0.01" min="0" placeholder="0.00">
+            <label for="site-fee">Entry Fee (KES)</label>
+            <input type="number" id="site-fee" step="1" min="0" placeholder="0">
           </div>
         </div>
         <div class="form-group">

@@ -87,7 +87,7 @@ async function loadReviewsCache() {
 }
 
 // =============================================
-// SITES FEED LOADER
+// SITES FEED LOADER (WITH IMAGE RENDERING)
 // =============================================
 async function loadSitesFeed(filterTerm = '') {
   const container = document.getElementById('sitesFeedContainer');
@@ -129,12 +129,14 @@ async function loadSitesFeed(filterTerm = '') {
       const siteId = site.id;
       const siteTitle = site.title || site.name || 'Heritage Destination';
       const entryFee = parseFloat(site.entry_fee || 0);
+      const imageUrl = site.image_url || 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=600&q=80';
 
       const artisanReviews = cachedReviews.filter(r => r.artisan_id === artisanId);
       const count = artisanReviews.length;
 
       return `
         <article class="site-card" data-site-id="${siteId}">
+          <img src="${imageUrl}" alt="${escapeHtml(siteTitle)}" class="site-card-image" onerror="this.src='https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=600&q=80'" />
           <div class="site-card-header">
             <div>
               <h3>${escapeHtml(siteTitle)}</h3>
@@ -405,7 +407,6 @@ async function recordBookingInDatabase(bookingData) {
     document.getElementById('bookModal').classList.add('hidden');
     alert(`Payment successful! Reference: ${bookingData.reference}. Opening direct chat.`);
     
-    // Switch to direct chat
     startChatWithUser(bookingData.artisanUserId, bookingData.artisanName);
   } catch (err) {
     console.error('Booking save note:', err);
@@ -421,7 +422,6 @@ async function loadChatContacts() {
   if (!container) return;
 
   try {
-    // Fetch unique contacts from messages where user is sender or recipient
     const { data: sentMessages } = await supabaseClient
       .from('messages')
       .select('recipient_id, users!messages_recipient_id_fkey(id, first_name, last_name, role)')
@@ -480,7 +480,6 @@ function startChatWithUser(recipientUserId, recipientName) {
     return;
   }
 
-  // Switch navigation view
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const chatNavBtn = document.querySelector('[data-section="chat"]');
   if (chatNavBtn) chatNavBtn.classList.add('active');
@@ -532,7 +531,6 @@ async function loadMessagesForActivePartner() {
   }
 }
 
-// Message Send Handler
 const chatInputForm = document.getElementById('chatInputForm');
 if (chatInputForm) {
   chatInputForm.addEventListener('submit', async (e) => {
@@ -587,12 +585,10 @@ function setupRealtimeMessages() {
 function initModals() {
   initBookingCalculator();
 
-  // Read reviews close
   document.getElementById('closeReadReviewsBtn')?.addEventListener('click', () => {
     document.getElementById('readReviewsModal').classList.add('hidden');
   });
 
-  // Write review close & submit
   const writeReviewModal = document.getElementById('writeReviewModal');
   document.getElementById('closeWriteReviewBtn')?.addEventListener('click', () => {
     writeReviewModal.classList.add('hidden');
@@ -611,7 +607,6 @@ function initModals() {
         const rating = parseInt(document.getElementById('review-rating-select').value, 10);
         const comment = document.getElementById('review-comment-text').value.trim();
 
-        // Dynamically build payload
         const payload = {
           customer_id: activeUser.id,
           artisan_id: artisanId,
@@ -637,7 +632,6 @@ function initModals() {
     });
   }
 
-  // Booking submit
   const bookModal = document.getElementById('bookModal');
   document.getElementById('closeBookModalBtn')?.addEventListener('click', () => {
     bookModal.classList.add('hidden');
@@ -651,7 +645,7 @@ function initModals() {
     });
   }
 
-  // Site create / edit modal
+  // Site create / edit modal with Storage Upload
   const siteModal = document.getElementById('siteModal');
   const openAddSiteBtn = document.getElementById('openAddSiteBtn');
   if (openAddSiteBtn) {
@@ -675,9 +669,37 @@ function initModals() {
 
       const saveBtn = document.getElementById('saveSiteBtn');
       saveBtn.disabled = true;
+      saveBtn.textContent = 'Uploading & Saving...';
 
       try {
         const siteId = document.getElementById('site-id').value;
+        const imageFileInput = document.getElementById('site-image');
+        let uploadedImageUrl = null;
+
+        // Upload image to 'site-images' storage bucket if selected
+        if (imageFileInput && imageFileInput.files && imageFileInput.files[0]) {
+          const file = imageFileInput.files[0];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${activeArtisan.id}_${Date.now()}.${fileExt}`;
+
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('site-images')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = supabaseClient
+            .storage
+            .from('site-images')
+            .getPublicUrl(fileName);
+
+          uploadedImageUrl = publicUrlData.publicUrl;
+        }
+
         const payload = {
           artisan_id: activeArtisan.id,
           title: document.getElementById('site-title').value.trim(),
@@ -685,6 +707,10 @@ function initModals() {
           location: document.getElementById('site-location').value.trim(),
           entry_fee: parseFloat(document.getElementById('site-fee').value) || 0
         };
+
+        if (uploadedImageUrl) {
+          payload.image_url = uploadedImageUrl;
+        }
 
         if (siteId) {
           const { error } = await supabaseClient.from('tourist_sites').update(payload).eq('id', siteId);
@@ -695,16 +721,18 @@ function initModals() {
         }
 
         siteModal.classList.add('hidden');
+        siteForm.reset();
         await loadSitesFeed();
+        alert('Site saved successfully!');
       } catch (err) {
         alert(`Failed to save site: ${err.message}`);
       } finally {
         saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Site';
       }
     });
   }
 
-  // Map modal
   const mapModal = document.getElementById('mapModal');
   document.getElementById('openMapBtn')?.addEventListener('click', () => {
     mapModal.classList.remove('hidden');

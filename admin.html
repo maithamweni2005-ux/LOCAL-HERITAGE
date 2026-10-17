@@ -70,9 +70,15 @@
           <h1 id="adminPageTitle">User Accounts</h1>
           <p class="muted-sub" id="adminPageSub">Manage registered customers, artisans, and credentials</p>
         </div>
-        <div class="admin-user-info" id="adminUserInfo">
-          <i data-lucide="user-check"></i>
-          <span id="adminNameBadge">Loading Admin...</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="btn btn-primary" id="openBroadcastBtn">
+            <i data-lucide="megaphone"></i>
+            <span>Send Announcement</span>
+          </button>
+          <div class="admin-user-info" id="adminUserInfo">
+            <i data-lucide="user-check"></i>
+            <span id="adminNameBadge">Loading Admin...</span>
+          </div>
         </div>
       </header>
 
@@ -262,7 +268,7 @@
     </main>
   </div>
 
-  <!-- MODAL: Edit Site (Admin Superpower) -->
+  <!-- MODAL: Edit Site -->
   <div id="adminEditSiteModal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
@@ -285,8 +291,8 @@
             <input type="text" id="edit-site-location" required>
           </div>
           <div class="form-group">
-            <label for="edit-site-fee">Entry Fee ($)</label>
-            <input type="number" id="edit-site-fee" step="0.01" min="0" required>
+            <label for="edit-site-fee">Entry Fee (KES)</label>
+            <input type="number" id="edit-site-fee" step="1" min="0" required>
           </div>
         </div>
         <button type="submit" class="btn btn-primary w-100" id="saveSiteBtn">Save Updates</button>
@@ -305,7 +311,7 @@
         <input type="hidden" id="reset-user-email">
         <p class="muted-sub mb-3" id="resetUserTarget"></p>
         <p class="notice-box">
-          You can dispatch an official recovery reset email to the account's registered address directly through Supabase Auth.
+          Dispatch official password recovery instructions to the account's registered address via Supabase Auth.
         </p>
         <button type="submit" class="btn btn-primary w-100" id="sendResetBtn">
           <i data-lucide="key"></i>
@@ -315,28 +321,24 @@
     </div>
   </div>
 
-  <!-- MODAL: Direct Admin Message Dispatcher -->
+  <!-- MODAL: Direct Admin Message & Broadcast Announcement -->
   <div id="adminMsgModal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
-        <h3>Send Admin Message</h3>
+        <h3 id="adminMsgModalTitle">Send Message</h3>
         <button class="btn-close" id="closeAdminMsgBtn"><i data-lucide="x"></i></button>
       </div>
       <form id="adminMsgForm">
         <input type="hidden" id="msg-recipient-id">
-        <input type="hidden" id="msg-recipient-name">
+        <input type="hidden" id="msg-is-broadcast" value="false">
         <p class="muted-sub mb-3" id="msgRecipientTarget"></p>
         <div class="form-group">
-          <label for="msg-subject">Message Subject</label>
-          <input type="text" id="msg-subject" placeholder="e.g. Account Notice / Booking Update" required>
-        </div>
-        <div class="form-group">
-          <label for="msg-body">Message Content</label>
-          <textarea id="msg-body" rows="4" placeholder="Write your message here..." required></textarea>
+          <label for="msg-body">Message</label>
+          <textarea id="msg-body" rows="4" placeholder="Write message or announcement..." required></textarea>
         </div>
         <button type="submit" class="btn btn-primary w-100" id="sendAdminMsgBtn">
           <i data-lucide="send"></i>
-          <span>Send Message</span>
+          <span id="sendAdminMsgBtnText">Send Message</span>
         </button>
       </form>
     </div>

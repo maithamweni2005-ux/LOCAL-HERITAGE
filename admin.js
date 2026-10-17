@@ -24,7 +24,6 @@ async function initializeAdmin() {
   try {
     currentAdmin = await getCurrentUser();
 
-    // Verify admin access
     if (!currentAdmin || currentAdmin.role !== 'admin') {
       window.location.href = 'index.html';
       return;
@@ -35,7 +34,6 @@ async function initializeAdmin() {
       adminNameBadge.textContent = `${currentAdmin.first_name} ${currentAdmin.last_name}`;
     }
 
-    // Load initial sets
     await Promise.all([
       loadAllUsers(),
       loadAllArtisans(),
@@ -52,7 +50,7 @@ async function initializeAdmin() {
 }
 
 // =============================================
-// NAVIGATION & SECTION SWITCHING
+// NAVIGATION & VIEW SWITCHING
 // =============================================
 function setupAdminNavigation() {
   const titles = {
@@ -81,11 +79,9 @@ function setupAdminNavigation() {
         document.getElementById('adminPageSub').textContent = titles[section].sub;
       }
 
-      // Close mobile drawer
       const sidebar = document.getElementById('adminSidebar');
       if (sidebar) sidebar.classList.remove('open');
 
-      // Refresh section data
       if (section === 'users') loadAllUsers();
       if (section === 'artisans') loadAllArtisans();
       if (section === 'sites') loadAllSites();
@@ -114,7 +110,7 @@ function setupMobileDrawer() {
 }
 
 // =============================================
-// USERS MANAGEMENT (View, Reset Pass, Message, Delete)
+// USERS MANAGEMENT
 // =============================================
 async function loadAllUsers() {
   try {
@@ -177,8 +173,7 @@ function renderUsersTable(users) {
 }
 
 window.deleteUser = async function(userId, role) {
-  const label = role === 'artisan' ? 'artisan' : 'customer';
-  if (!confirm(`Are you sure you want to remove this ${label}? All related access will be deleted.`)) return;
+  if (!confirm(`Are you sure you want to remove this ${role}?`)) return;
 
   try {
     const { error } = await supabaseClient.from('users').delete().eq('id', userId);
@@ -235,7 +230,7 @@ function renderArtisansTable(artisans) {
             <button class="btn-action" title="Send Message" onclick="openAdminMsgModal('${artisanUserId}', '${escapeHtml(artisan.business_name)}', 'artisan')">
               <i data-lucide="mail"></i>
             </button>
-            <button class="btn-action btn-danger" title="Remove Artisan" onclick="deleteArtisan('${artisan.id}', '${artisanUserId}')">
+            <button class="btn-action btn-danger" title="Remove Artisan" onclick="deleteArtisan('${artisan.id}')">
               <i data-lucide="trash-2"></i>
             </button>
           </div>
@@ -247,8 +242,8 @@ function renderArtisansTable(artisans) {
   if (window.lucide) lucide.createIcons();
 }
 
-window.deleteArtisan = async function(artisanId, userId) {
-  if (!confirm('Are you sure you want to remove this artisan and their workshop?')) return;
+window.deleteArtisan = async function(artisanId) {
+  if (!confirm('Are you sure you want to remove this artisan?')) return;
   try {
     const { error } = await supabaseClient.from('artisans').delete().eq('id', artisanId);
     if (error) throw error;
@@ -263,7 +258,7 @@ window.deleteArtisan = async function(artisanId, userId) {
 };
 
 // =============================================
-// SITES MANAGEMENT (Inspect, Edit, Delete)
+// SITES MANAGEMENT
 // =============================================
 async function loadAllSites() {
   try {
@@ -298,7 +293,7 @@ function renderSitesTable(sites) {
         <td><strong>${siteTitle}</strong></td>
         <td>${escapeHtml(artisanName)}</td>
         <td>${escapeHtml(site.location || 'Kenya')}</td>
-        <td>$${parseFloat(site.entry_fee || 0).toFixed(2)}</td>
+        <td>KES ${parseFloat(site.entry_fee || 0).toLocaleString()}</td>
         <td>${new Date(site.created_at).toLocaleDateString()}</td>
         <td>
           <div class="btn-action-group">
@@ -345,37 +340,17 @@ window.adminDeleteSite = async function(siteId) {
 };
 
 // =============================================
-// BOOKINGS MANAGEMENT
+// BOOKINGS MANAGEMENT (FIXED DELETION)
 // =============================================
 async function loadAllBookings() {
   try {
-    // Attempt load from bookings table if existing, or provide live tracking cache
     const { data, error } = await supabaseClient
       .from('bookings')
       .select('*, tourist_sites(title), users(first_name, last_name, email)')
       .order('created_at', { ascending: false });
 
-    allBookings = (!error && data) ? data : [
-      {
-        id: 'bk_1',
-        customer_name: 'Grace Wanjiku',
-        site_title: 'Tsavo Artisan Carver Center',
-        visit_date: '2026-10-24',
-        visitors: 2,
-        total_amount: 30.00,
-        status: 'confirmed'
-      },
-      {
-        id: 'bk_2',
-        customer_name: 'David Kasimilu',
-        site_title: 'Voi Eco-Cultural Reserve',
-        visit_date: '2026-11-02',
-        visitors: 1,
-        total_amount: 15.00,
-        status: 'confirmed'
-      }
-    ];
-
+    if (error) throw error;
+    allBookings = data || [];
     renderBookingsTable(allBookings);
   } catch (err) {
     console.error('Bookings load note:', err);
@@ -392,8 +367,8 @@ function renderBookingsTable(bookings) {
   }
 
   tbody.innerHTML = bookings.map(b => {
-    const custName = b.customer_name || (b.users ? `${b.users.first_name} ${b.users.last_name}` : 'Customer');
-    const siteName = b.site_title || b.tourist_sites?.title || 'Heritage Site';
+    const custName = b.users ? `${b.users.first_name} ${b.users.last_name}` : 'Customer';
+    const siteName = b.tourist_sites?.title || 'Heritage Site';
 
     return `
       <tr>
@@ -401,15 +376,15 @@ function renderBookingsTable(bookings) {
         <td>${escapeHtml(siteName)}</td>
         <td>${b.visit_date || 'Upcoming'}</td>
         <td>${b.visitors || 1} Person(s)</td>
-        <td>$${parseFloat(b.total_amount || 0).toFixed(2)}</td>
+        <td>KES ${parseFloat(b.total_amount || 0).toLocaleString()}</td>
         <td><span class="badge badge-${b.status || 'confirmed'}">${b.status || 'Confirmed'}</span></td>
         <td>
           <div class="btn-action-group">
             <button class="btn-action" title="Mark Completed" onclick="updateBookingStatus('${b.id}', 'completed')">
               <i data-lucide="check"></i>
             </button>
-            <button class="btn-action btn-danger" title="Cancel Booking" onclick="updateBookingStatus('${b.id}', 'cancelled')">
-              <i data-lucide="x"></i>
+            <button class="btn-action btn-danger" title="Delete Booking" onclick="adminDeleteBooking('${b.id}')">
+              <i data-lucide="trash-2"></i>
             </button>
           </div>
         </td>
@@ -420,12 +395,37 @@ function renderBookingsTable(bookings) {
   if (window.lucide) lucide.createIcons();
 }
 
-window.updateBookingStatus = function(bookingId, newStatus) {
-  const item = allBookings.find(b => b.id === bookingId);
-  if (item) {
-    item.status = newStatus;
-    renderBookingsTable(allBookings);
+window.updateBookingStatus = async function(bookingId, newStatus) {
+  try {
+    const { error } = await supabaseClient
+      .from('bookings')
+      .update({ status: newStatus })
+      .eq('id', bookingId);
+
+    if (error) throw error;
+    await loadAllBookings();
     alert(`Booking marked as ${newStatus}.`);
+  } catch (err) {
+    alert(`Could not update booking status: ${err.message}`);
+  }
+};
+
+window.adminDeleteBooking = async function(bookingId) {
+  if (!confirm('Are you sure you want to delete this booking record?')) return;
+
+  try {
+    const { error } = await supabaseClient
+      .from('bookings')
+      .delete()
+      .eq('id', bookingId);
+
+    if (error) throw error;
+
+    alert('Booking removed successfully.');
+    await loadAllBookings();
+    await loadAnalytics();
+  } catch (err) {
+    alert(`Failed to delete booking: ${err.message}`);
   }
 };
 
@@ -498,11 +498,12 @@ window.adminDeleteReview = async function(reviewId) {
 // =============================================
 async function loadAnalytics() {
   try {
-    const [{ count: userCount }, { count: artisanCount }, { count: siteCount }, { count: reviewCount }] = await Promise.all([
+    const [{ count: userCount }, { count: artisanCount }, { count: siteCount }, { count: reviewCount }, { count: bookingCount }] = await Promise.all([
       supabaseClient.from('users').select('*', { count: 'exact', head: true }),
       supabaseClient.from('artisans').select('*', { count: 'exact', head: true }),
       supabaseClient.from('tourist_sites').select('*', { count: 'exact', head: true }),
-      supabaseClient.from('reviews').select('*', { count: 'exact', head: true })
+      supabaseClient.from('reviews').select('*', { count: 'exact', head: true }),
+      supabaseClient.from('bookings').select('*', { count: 'exact', head: true })
     ]);
 
     const { data: reviewsData } = await supabaseClient.from('reviews').select('rating');
@@ -510,19 +511,18 @@ async function loadAnalytics() {
       ? (reviewsData.reduce((acc, curr) => acc + curr.rating, 0) / reviewsData.length).toFixed(1)
       : '0.0';
 
-    const { data: sitesData } = await supabaseClient.from('tourist_sites').select('entry_fee');
-    const totalRev = sitesData
-      ? sitesData.reduce((acc, curr) => acc + (parseFloat(curr.entry_fee) || 0), 0).toFixed(2)
+    const { data: bookingsData } = await supabaseClient.from('bookings').select('total_amount');
+    const totalRev = bookingsData
+      ? bookingsData.reduce((acc, curr) => acc + (parseFloat(curr.total_amount) || 0), 0).toFixed(2)
       : '0.00';
 
     document.getElementById('totalUsers').textContent = userCount || 0;
     document.getElementById('totalArtisans').textContent = artisanCount || 0;
     document.getElementById('totalSites').textContent = siteCount || 0;
-    document.getElementById('totalBookings').textContent = allBookings.length;
+    document.getElementById('totalBookings').textContent = bookingCount || 0;
     document.getElementById('avgRating').textContent = avgRating;
-    document.getElementById('totalRevenue').textContent = `$${totalRev}`;
+    document.getElementById('totalRevenue').textContent = `KES ${parseFloat(totalRev).toLocaleString()}`;
 
-    // Users by role
     const roleCount = {};
     allUsers.forEach(u => {
       roleCount[u.role] = (roleCount[u.role] || 0) + 1;
@@ -533,14 +533,8 @@ async function loadAnalytics() {
       .join('');
     document.getElementById('usersByRole').innerHTML = roleHtml || '<p class="muted-sub">No data available</p>';
 
-    // Top Artisans
-    const { data: topArtisansData } = await supabaseClient
-      .from('reviews')
-      .select('artisan_id, artisans(business_name)')
-      .limit(10);
-
     const counts = {};
-    topArtisansData?.forEach(r => {
+    allReviews.forEach(r => {
       const name = r.artisans?.business_name || 'Artisan';
       counts[name] = (counts[name] || 0) + 1;
     });
@@ -558,10 +552,9 @@ async function loadAnalytics() {
 }
 
 // =============================================
-// SEARCH & FILTER LISTENERS
+// SEARCH LISTENERS
 // =============================================
 function setupSearchAndFilters() {
-  // Users Search & Role Filter
   document.getElementById('userSearch')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
     const filtered = allUsers.filter(u =>
@@ -578,7 +571,6 @@ function setupSearchAndFilters() {
     renderUsersTable(filtered);
   });
 
-  // Artisans Search
   document.getElementById('artisanSearch')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
     const filtered = allArtisans.filter(a =>
@@ -589,7 +581,6 @@ function setupSearchAndFilters() {
     renderArtisansTable(filtered);
   });
 
-  // Sites Search
   document.getElementById('siteSearch')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
     const filtered = allSites.filter(s =>
@@ -599,17 +590,16 @@ function setupSearchAndFilters() {
     renderSitesTable(filtered);
   });
 
-  // Bookings Search
   document.getElementById('bookingSearch')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
-    const filtered = allBookings.filter(b =>
-      (b.customer_name && b.customer_name.toLowerCase().includes(q)) ||
-      (b.site_title && b.site_title.toLowerCase().includes(q))
-    );
+    const filtered = allBookings.filter(b => {
+      const cust = b.users ? `${b.users.first_name} ${b.users.last_name}` : '';
+      const site = b.tourist_sites?.title || '';
+      return cust.toLowerCase().includes(q) || site.toLowerCase().includes(q);
+    });
     renderBookingsTable(filtered);
   });
 
-  // Reviews Search
   document.getElementById('reviewSearch')?.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
     const filtered = allReviews.filter(r =>
@@ -621,10 +611,9 @@ function setupSearchAndFilters() {
 }
 
 // =============================================
-// MODALS LOGIC (Password Reset, Message, Site Edit)
+// MODALS (DIRECT MESSAGING & BROADCAST ANNOUNCEMENTS)
 // =============================================
 function setupModals() {
-  // Password Reset Modal
   const resetModal = document.getElementById('resetPasswordModal');
   document.getElementById('closeResetModalBtn')?.addEventListener('click', () => resetModal.classList.add('hidden'));
 
@@ -638,7 +627,7 @@ function setupModals() {
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
       if (error) throw error;
 
-      alert(`Official password reset instructions have been dispatched to ${email}.`);
+      alert(`Password reset instructions sent to ${email}.`);
       resetModal.classList.add('hidden');
     } catch (err) {
       alert(`Reset error: ${err.message}`);
@@ -647,18 +636,70 @@ function setupModals() {
     }
   });
 
-  // Direct Message Modal
+  // Direct Message & Broadcast Modal
   const msgModal = document.getElementById('adminMsgModal');
   document.getElementById('closeAdminMsgBtn')?.addEventListener('click', () => msgModal.classList.add('hidden'));
 
-  document.getElementById('adminMsgForm')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const recipientName = document.getElementById('msg-recipient-name').value;
-    const subject = document.getElementById('msg-subject').value;
-
-    alert(`Direct notification "${subject}" has been transmitted to ${recipientName}.`);
+  // Broadcast button in topbar
+  document.getElementById('openBroadcastBtn')?.addEventListener('click', () => {
+    document.getElementById('msg-is-broadcast').value = 'true';
+    document.getElementById('msg-recipient-id').value = '';
+    document.getElementById('adminMsgModalTitle').textContent = 'Broadcast Announcement';
+    document.getElementById('msgRecipientTarget').textContent = 'Recipient: All Registered Users & Artisans';
+    document.getElementById('sendAdminMsgBtnText').textContent = 'Broadcast Announcement';
     document.getElementById('adminMsgForm').reset();
-    msgModal.classList.add('hidden');
+    msgModal.classList.remove('hidden');
+  });
+
+  // Send Direct Message or Broadcast to Supabase 'messages'
+  document.getElementById('adminMsgForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('sendAdminMsgBtn');
+    btn.disabled = true;
+
+    const isBroadcast = document.getElementById('msg-is-broadcast').value === 'true';
+    const recipientId = document.getElementById('msg-recipient-id').value;
+    const messageBody = document.getElementById('msg-body').value.trim();
+
+    try {
+      if (isBroadcast) {
+        // Broadcast: Insert a message for all users except the admin
+        const targetUsers = allUsers.filter(u => u.id !== currentAdmin.id);
+
+        if (!targetUsers.length) {
+          alert('No recipients available for broadcast.');
+          return;
+        }
+
+        const messagesPayload = targetUsers.map(u => ({
+          sender_id: currentAdmin.id,
+          recipient_id: u.id,
+          message_text: `[ANNOUNCEMENT]: ${messageBody}`
+        }));
+
+        const { error } = await supabaseClient.from('messages').insert(messagesPayload);
+        if (error) throw error;
+
+        alert(`Announcement broadcast to ${targetUsers.length} users successfully!`);
+      } else {
+        // Single Direct Message
+        const { error } = await supabaseClient.from('messages').insert([{
+          sender_id: currentAdmin.id,
+          recipient_id: recipientId,
+          message_text: messageBody
+        }]);
+
+        if (error) throw error;
+        alert('Direct message sent successfully!');
+      }
+
+      document.getElementById('adminMsgForm').reset();
+      msgModal.classList.add('hidden');
+    } catch (err) {
+      alert(`Could not deliver message: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   // Site Edit Modal
@@ -696,7 +737,6 @@ function setupModals() {
     }
   });
 
-  // Click Outside to Dismiss
   [resetModal, msgModal, editSiteModal].forEach(m => {
     m?.addEventListener('click', (e) => {
       if (e.target === m) m.classList.add('hidden');
@@ -711,9 +751,12 @@ window.openResetPasswordModal = function(email, fullName) {
 };
 
 window.openAdminMsgModal = function(id, name, role) {
+  document.getElementById('msg-is-broadcast').value = 'false';
   document.getElementById('msg-recipient-id').value = id;
-  document.getElementById('msg-recipient-name').value = name;
+  document.getElementById('adminMsgModalTitle').textContent = 'Send Direct Message';
   document.getElementById('msgRecipientTarget').textContent = `Recipient: ${name} [${role.toUpperCase()}]`;
+  document.getElementById('sendAdminMsgBtnText').textContent = 'Send Direct Message';
+  document.getElementById('adminMsgForm').reset();
   document.getElementById('adminMsgModal').classList.remove('hidden');
 };
 

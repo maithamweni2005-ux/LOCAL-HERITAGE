@@ -12,22 +12,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const loginSection = document.getElementById('loginSection');
   const registerSection = document.getElementById('registerSection');
+  const forgotSection = document.getElementById('forgotSection');
+
   const goToRegisterBtn = document.getElementById('goToRegisterBtn');
   const goToLoginBtn = document.getElementById('goToLoginBtn');
+  const goToForgotBtn = document.getElementById('goToForgotBtn');
+  const backToLoginFromForgotBtn = document.getElementById('backToLoginFromForgotBtn');
+
   const messageEl = document.getElementById('authMessage');
 
   if (goToRegisterBtn) {
     goToRegisterBtn.addEventListener('click', () => {
-      loginSection.classList.add('hidden');
-      registerSection.classList.remove('hidden');
+      if (loginSection) loginSection.classList.add('hidden');
+      if (forgotSection) forgotSection.classList.add('hidden');
+      if (registerSection) registerSection.classList.remove('hidden');
       if (messageEl) messageEl.innerHTML = '';
     });
   }
 
   if (goToLoginBtn) {
     goToLoginBtn.addEventListener('click', () => {
-      registerSection.classList.add('hidden');
-      loginSection.classList.remove('hidden');
+      if (registerSection) registerSection.classList.add('hidden');
+      if (forgotSection) forgotSection.classList.add('hidden');
+      if (loginSection) loginSection.classList.remove('hidden');
+      if (messageEl) messageEl.innerHTML = '';
+    });
+  }
+
+  if (goToForgotBtn) {
+    goToForgotBtn.addEventListener('click', () => {
+      if (loginSection) loginSection.classList.add('hidden');
+      if (registerSection) registerSection.classList.add('hidden');
+      if (forgotSection) forgotSection.classList.remove('hidden');
+      if (messageEl) messageEl.innerHTML = '';
+    });
+  }
+
+  if (backToLoginFromForgotBtn) {
+    backToLoginFromForgotBtn.addEventListener('click', () => {
+      if (forgotSection) forgotSection.classList.add('hidden');
+      if (registerSection) registerSection.classList.add('hidden');
+      if (loginSection) loginSection.classList.remove('hidden');
       if (messageEl) messageEl.innerHTML = '';
     });
   }
@@ -138,14 +163,41 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // --- FORGOT PASSWORD ---
+  const forgotForm = document.getElementById('forgotForm');
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const resetBtn = document.getElementById('resetBtn');
+      const email = document.getElementById('forgot-email').value.trim();
+
+      try {
+        resetBtn.disabled = true;
+        resetBtn.textContent = 'Sending link...';
+
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/index.html?reset=true`
+        });
+
+        if (error) throw error;
+        showMessage(messageEl, 'Password reset link sent! Check your email.', 'success');
+      } catch (err) {
+        showMessage(messageEl, err.message, 'error');
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = 'Reset Password';
+      }
+    });
+  }
 });
 
 // =============================================
-// HELPERS
+// HELPERS & SESSION MANAGEMENT
 // =============================================
 function showMessage(el, message, type) {
   if (el) {
-    el.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    el.innerHTML = `<div class="alert alert-${type}">${escapeHtml(message)}</div>`;
   }
 }
 
@@ -160,53 +212,85 @@ function redirectByRole(role) {
 }
 
 async function checkAuth() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session && session.user) {
-    const { data: userData } = await supabaseClient
-      .from('users')
-      .select('role')
-      .eq('email', session.user.email)
-      .maybeSingle();
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+      const { data: userData } = await supabaseClient
+        .from('users')
+        .select('role')
+        .eq('email', session.user.email)
+        .maybeSingle();
 
-    if (userData && userData.role) {
-      redirectByRole(userData.role);
+      if (userData && userData.role) {
+        redirectByRole(userData.role);
+      }
     }
+  } catch (err) {
+    console.warn('Auth check failed:', err.message);
   }
 }
 
-if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+const currentPath = window.location.pathname;
+if (currentPath.endsWith('index.html') || currentPath === '/' || currentPath === '') {
   checkAuth();
 }
 
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
-  if (!error) {
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (!error) {
+      window.location.href = 'index.html';
+    }
+  } catch (err) {
+    console.error('Logout error:', err.message);
     window.location.href = 'index.html';
   }
 }
 
 async function getCurrentUser() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) return null;
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session || !session.user) return null;
 
-  const { data: userData } = await supabaseClient
-    .from('users')
-    .select('*')
-    .eq('email', session.user.email)
-    .maybeSingle();
+    const { data: userData, error } = await supabaseClient
+      .from('users')
+      .select('*')
+      .eq('email', session.user.email)
+      .maybeSingle();
 
-  return userData;
+    if (error) throw error;
+    return userData;
+  } catch (err) {
+    console.error('getCurrentUser error:', err.message);
+    return null;
+  }
 }
 
 async function getCurrentArtisan() {
-  const user = await getCurrentUser();
-  if (!user) return null;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
 
-  const { data: artisanData } = await supabaseClient
-    .from('artisans')
-    .select('*')
-    .eq('user_id', user.id || user.user_id)
-    .maybeSingle();
+    const { data: artisanData, error } = await supabaseClient
+      .from('artisans')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  return artisanData;
+    if (error) throw error;
+    return artisanData;
+  } catch (err) {
+    console.error('getCurrentArtisan error:', err.message);
+    return null;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

@@ -8,6 +8,8 @@
   --border: #e2e8f0;
   --danger: #ef4444;
   --danger-hover: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
   --radius: 8px;
 }
 
@@ -174,6 +176,142 @@ body {
 
 .view.active {
   display: block;
+}
+
+/* Metrics Cards (Artisan Financial Tracker) */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.5rem;
+}
+
+.metric-value.highlight {
+  color: var(--primary);
+}
+
+/* Card Container & Data Tables */
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.card-table {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.data-table th, 
+.data-table td {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  background-color: #f8fafc;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.775rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.data-table code {
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.825rem;
+}
+
+/* Status & Payment Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-confirmed, 
+.status-completed, 
+.payment-paid {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-pending, 
+.payment-unpaid, 
+.payment-pending {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.status-cancelled, 
+.payment-failed, 
+.payment-refunded {
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 /* Feed Controls */
@@ -619,10 +757,6 @@ body {
   align-items: center;
 }
 
-.w-100 {
-  width: 100%;
-}
-
 .form-group {
   margin-bottom: 14px;
   display: flex;
@@ -671,6 +805,28 @@ input:read-only {
   font-size: 0.875rem;
 }
 
+/* Utilities */
+.hidden {
+  display: none !important;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+/* Responsive Styles */
 @media (max-width: 768px) {
   .mobile-header {
     display: flex;

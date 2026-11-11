@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sites Feed - Local Heritage</title>
+  <title>Dashboard - Local Heritage</title>
   <link rel="stylesheet" href="dashboard.css">
   
   <!-- Supabase JS & Lucide Icons -->
@@ -38,6 +38,17 @@
           <i data-lucide="layout-grid"></i>
           <span>Sites Feed</span>
         </button>
+
+        <!-- Role Specific Dynamic Nav Items -->
+        <button class="nav-btn hidden" id="nav-artisan-tracker" data-section="artisan-tracker">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Bookings & Financials</span>
+        </button>
+        <button class="nav-btn hidden" id="nav-customer-tracker" data-section="customer-tracker">
+          <i data-lucide="receipt"></i>
+          <span>My Payments</span>
+        </button>
+
         <button class="nav-btn" data-section="chat">
           <i data-lucide="message-circle"></i>
           <span>Direct Messages</span>
@@ -88,6 +99,78 @@
 
           <div id="sitesFeedContainer" class="feed-grid">
             <p class="muted">Loading destinations...</p>
+          </div>
+        </section>
+
+        <!-- Section: ARTISAN BOOKINGS & FINANCIAL TRACKER -->
+        <section id="artisan-tracker" class="view">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Total Bookings</span>
+              <p class="metric-value" id="artisan-total-bookings">0</p>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Total Revenue</span>
+              <p class="metric-value highlight" id="artisan-total-revenue">KES 0.00</p>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Pending Payout</span>
+              <p class="metric-value" id="artisan-pending-payout">KES 0.00</p>
+            </div>
+          </div>
+
+          <div class="card card-table mt-4">
+            <div class="table-header">
+              <h3>Site Bookings & Received Payments</h3>
+              <p class="muted-small">Manage customer bookings and view payment statuses across all your sites</p>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Booking ID</th>
+                    <th>Customer</th>
+                    <th>Site Title</th>
+                    <th>Visit Date</th>
+                    <th>Visitors</th>
+                    <th>Amount</th>
+                    <th>Booking Status</th>
+                    <th>Payment Status</th>
+                  </tr>
+                </thead>
+                <tbody id="artisan-bookings-table-body">
+                  <tr><td colspan="8" class="text-center muted">Loading transactions...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: CUSTOMER PAYMENT HISTORY TRACKER -->
+        <section id="customer-tracker" class="view">
+          <div class="card card-table">
+            <div class="table-header">
+              <h3>My Payment & Booking History</h3>
+              <p class="muted-small">Track all payments made to local heritage sites</p>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Reference</th>
+                    <th>Site Name</th>
+                    <th>Visit Date</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Method</th>
+                    <th>Date Paid</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-payments-table-body">
+                  <tr><td colspan="7" class="text-center muted">Loading payment history...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 

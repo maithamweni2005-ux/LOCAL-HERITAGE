@@ -54,6 +54,14 @@ async function initDashboard() {
       const feedHeaderSub = document.getElementById('feedHeaderSub');
       if (feedHeaderTitle) feedHeaderTitle.textContent = 'My Listed Sites';
       if (feedHeaderSub) feedHeaderSub.textContent = 'Manage, update, and monitor your listed destinations';
+
+      // Show artisan navigation item
+      const navArtisanTracker = document.getElementById('nav-artisan-tracker');
+      if (navArtisanTracker) navArtisanTracker.classList.remove('hidden');
+    } else {
+      // Show customer navigation item
+      const navCustomerTracker = document.getElementById('nav-customer-tracker');
+      if (navCustomerTracker) navCustomerTracker.classList.remove('hidden');
     }
 
     const userInfoEl = document.getElementById('userInfo');
@@ -394,7 +402,8 @@ function handlePaystackPayment() {
 
 async function recordBookingInDatabase(bookingData) {
   try {
-    await supabaseClient.from('bookings').insert([{
+    // 1. Insert into bookings table
+    const { data: booking, error: bookingErr } = await supabaseClient.from('bookings').insert([{
       customer_id: activeUser.id,
       site_id: bookingData.siteId,
       artisan_id: bookingData.artisanId,
@@ -402,15 +411,145 @@ async function recordBookingInDatabase(bookingData) {
       visitors: bookingData.visitors,
       total_amount: bookingData.totalAmount,
       status: 'confirmed'
+    }]).select().single();
+
+    if (bookingErr) throw bookingErr;
+
+    // 2. Insert into payments table
+    await supabaseClient.from('payments').insert([{
+      booking_id: booking.id,
+      customer_id: activeUser.id,
+      artisan_id: bookingData.artisanId,
+      amount: bookingData.totalAmount,
+      payment_method: 'paystack',
+      transaction_reference: bookingData.reference,
+      status: 'completed'
     }]);
 
     document.getElementById('bookModal').classList.add('hidden');
     alert(`Payment successful! Reference: ${bookingData.reference}. Opening direct chat.`);
     
+    // Refresh trackers
+    await loadCustomerPaymentHistory();
+
     startChatWithUser(bookingData.artisanUserId, bookingData.artisanName);
   } catch (err) {
     console.error('Booking save note:', err);
     startChatWithUser(bookingData.artisanUserId, bookingData.artisanName);
+  }
+}
+
+// =============================================
+// ARTISAN FINANCIALS & CUSTOMER PAYMENTS TRACKER
+// =============================================
+async function loadArtisanBookingsAndFinancials() {
+  if (!activeArtisan) return;
+
+  const tbody = document.getElementById('artisan-bookings-table-body');
+  if (!tbody) return;
+
+  try {
+    const { data: bookings, error } = await supabaseClient
+      .from('bookings')
+      .select(`
+        id,
+        visit_date,
+        visitors,
+        total_amount,
+        status,
+        created_at,
+        users:customer_id (first_name, last_name, email),
+        tourist_sites:site_id (title)
+      `)
+      .eq('artisan_id', activeArtisan.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!bookings || bookings.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center muted">No bookings recorded yet.</td></tr>`;
+      document.getElementById('artisan-total-bookings').textContent = '0';
+      document.getElementById('artisan-total-revenue').textContent = 'KES 0.00';
+      document.getElementById('artisan-pending-payout').textContent = `KES ${(activeArtisan.pending_payout || 0).toLocaleString()}`;
+      return;
+    }
+
+    const totalBookingsCount = bookings.length;
+    const totalRevenueSum = bookings
+      .filter(b => b.status === 'confirmed' || b.status === 'completed')
+      .reduce((sum, b) => sum + Number(b.total_amount), 0);
+
+    const totalBookingsEl = document.getElementById('artisan-total-bookings');
+    const totalRevenueEl = document.getElementById('artisan-total-revenue');
+    const pendingPayoutEl = document.getElementById('artisan-pending-payout');
+
+    if (totalBookingsEl) totalBookingsEl.textContent = totalBookingsCount;
+    if (totalRevenueEl) totalRevenueEl.textContent = `KES ${totalRevenueSum.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    if (pendingPayoutEl) pendingPayoutEl.textContent = `KES ${(activeArtisan.pending_payout || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+    tbody.innerHTML = bookings.map(b => `
+      <tr>
+        <td><code>${b.id.substring(0, 8)}</code></td>
+        <td>${b.users ? `${escapeHtml(b.users.first_name)} ${escapeHtml(b.users.last_name)}` : 'Customer'}</td>
+        <td>${b.tourist_sites ? escapeHtml(b.tourist_sites.title) : 'N/A'}</td>
+        <td>${new Date(b.visit_date).toLocaleDateString()}</td>
+        <td>${b.visitors}</td>
+        <td><strong>KES ${Number(b.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+        <td><span class="badge status-${b.status}">${b.status.toUpperCase()}</span></td>
+        <td><span class="badge status-completed">PAID</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error loading artisan bookings:', err);
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Failed to load booking transactions.</td></tr>`;
+  }
+}
+
+async function loadCustomerPaymentHistory() {
+  if (!activeUser) return;
+
+  const tbody = document.getElementById('customer-payments-table-body');
+  if (!tbody) return;
+
+  try {
+    const { data: payments, error } = await supabaseClient
+      .from('payments')
+      .select(`
+        id,
+        amount,
+        payment_method,
+        transaction_reference,
+        status,
+        created_at,
+        bookings:booking_id (
+          visit_date,
+          tourist_sites:site_id (title)
+        )
+      `)
+      .eq('customer_id', activeUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!payments || payments.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">No payment transactions found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = payments.map(p => `
+      <tr>
+        <td><code>${escapeHtml(p.transaction_reference || p.id.substring(0, 8))}</code></td>
+        <td>${p.bookings?.tourist_sites?.title ? escapeHtml(p.bookings.tourist_sites.title) : 'Heritage Site Visit'}</td>
+        <td>${p.bookings?.visit_date ? new Date(p.bookings.visit_date).toLocaleDateString() : 'N/A'}</td>
+        <td><strong>KES ${Number(p.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+        <td>${(p.payment_method || 'Paystack').toUpperCase()}</td>
+        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+        <td><span class="badge status-${p.status}">${p.status.toUpperCase()}</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error loading customer payments:', err);
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load payment transactions.</td></tr>`;
   }
 }
 
@@ -794,6 +933,8 @@ function initNavigation() {
       if (sidebar) sidebar.classList.remove('open');
 
       if (sectionKey === 'feed') loadSitesFeed();
+      if (sectionKey === 'artisan-tracker') loadArtisanBookingsAndFinancials();
+      if (sectionKey === 'customer-tracker') loadCustomerPaymentHistory();
       if (sectionKey === 'chat') loadChatContacts();
       if (sectionKey === 'profile') loadProfileData();
     });

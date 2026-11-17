@@ -933,6 +933,7 @@ function initNavigation() {
       if (sidebar) sidebar.classList.remove('open');
 
       if (sectionKey === 'feed') loadSitesFeed();
+      if (sectionKey === 'travel') loadTravelGuide();
       if (sectionKey === 'artisan-tracker') loadArtisanBookingsAndFinancials();
       if (sectionKey === 'customer-tracker') loadCustomerPaymentHistory();
       if (sectionKey === 'chat') loadChatContacts();

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Local Heritage</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="travel.css">
   
   <!-- Supabase JS & Lucide Icons -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -37,6 +38,10 @@
         <button class="nav-btn active" data-section="feed">
           <i data-lucide="layout-grid"></i>
           <span>Sites Feed</span>
+        </button>
+        <button class="nav-btn" data-section="travel">
+          <i data-lucide="map"></i>
+          <span>Travel Guide</span>
         </button>
 
         <!-- Role Specific Dynamic Nav Items -->
@@ -99,6 +104,13 @@
 
           <div id="sitesFeedContainer" class="feed-grid">
             <p class="muted">Loading destinations...</p>
+          </div>
+        </section>
+
+        <!-- Section: TRAVEL GUIDE -->
+        <section id="travel" class="view">
+          <div id="travelContent">
+            <p class="muted">Loading travel guide...</p>
           </div>
         </section>
 
@@ -414,5 +426,6 @@
 
   <script src="app.js"></script>
   <script src="dashboard.js"></script>
+  <script src="travel.js"></script>
 </body>
 </html>

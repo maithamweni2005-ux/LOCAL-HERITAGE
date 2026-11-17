@@ -844,7 +844,8 @@ function initModals() {
           title: document.getElementById('site-title').value.trim(),
           description: document.getElementById('site-description').value.trim(),
           location: document.getElementById('site-location').value.trim(),
-          entry_fee: parseFloat(document.getElementById('site-fee').value) || 0
+          entry_fee: parseFloat(document.getElementById('site-fee').value) || 0,
+          region_id: document.getElementById('site-region')?.value || null
         };
 
         if (uploadedImageUrl) {
@@ -901,6 +902,8 @@ function openEditSiteModal(siteId) {
   document.getElementById('site-description').value = site.description || '';
   document.getElementById('site-location').value = site.location || '';
   document.getElementById('site-fee').value = site.entry_fee || '';
+  const siteRegionSel = document.getElementById('site-region');
+  if (siteRegionSel) siteRegionSel.value = site.region_id || '';
 
   document.getElementById('siteModalTitle').textContent = 'Edit Site Listing';
   document.getElementById('siteModal').classList.remove('hidden');

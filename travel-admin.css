@@ -1,0 +1,15 @@
+/* Admin: Travel Guide manager */
+.ta-tabs { display: flex; gap: 0.4rem; overflow-x: auto; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.ta-tab {
+  background: none; border: none; border-bottom: 2px solid transparent; padding: 0.65rem 0.9rem;
+  color: var(--text-muted); font-size: 0.875rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.ta-tab:hover { color: var(--text); }
+.ta-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.ta-actions { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+.ta-actions .btn svg { width: 16px; height: 16px; }
+.modal.modal-scroll { max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.modal.modal-wide { max-width: 820px; }
+.ta-check label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.ta-check input { width: auto; }
+#travelAdminBody textarea, #taFormFields textarea { width: 100%; }

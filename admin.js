@@ -57,6 +57,7 @@ function setupAdminNavigation() {
     users: { title: 'User Accounts', sub: 'Manage registered customers, artisans, and credentials' },
     artisans: { title: 'Registered Artisans', sub: 'Oversee verified workshops, locations, and crafts' },
     sites: { title: 'Tourist Destinations', sub: 'Inspect, edit descriptions, or remove cultural sites' },
+    travel: { title: 'Travel Guide', sub: 'Manage regions, itineraries, transport options and visitor tips' },
     bookings: { title: 'Bookings & Visits', sub: 'Monitor visits, attendee counts, and fee payments' },
     reviews: { title: 'Community Feedback', sub: 'Audit star ratings and user feedback' },
     analytics: { title: 'Platform Analytics', sub: 'Activity counts and aggregate performance metrics' }
@@ -86,6 +87,7 @@ function setupAdminNavigation() {
       if (section === 'artisans') loadAllArtisans();
       if (section === 'sites') loadAllSites();
       if (section === 'bookings') loadAllBookings();
+      if (section === 'travel') loadTravelAdmin();
       if (section === 'reviews') loadAllReviews();
       if (section === 'analytics') loadAnalytics();
     });
@@ -321,6 +323,8 @@ window.openAdminEditSiteModal = function(siteId) {
   document.getElementById('edit-site-desc').value = site.description || '';
   document.getElementById('edit-site-location').value = site.location || '';
   document.getElementById('edit-site-fee').value = site.entry_fee || 0;
+  const regionSel = document.getElementById('edit-site-region');
+  if (regionSel) regionSel.value = site.region_id || '';
 
   document.getElementById('adminEditSiteModal').classList.remove('hidden');
 };
@@ -717,7 +721,8 @@ function setupModals() {
         title: document.getElementById('edit-site-title').value.trim(),
         description: document.getElementById('edit-site-desc').value.trim(),
         location: document.getElementById('edit-site-location').value.trim(),
-        entry_fee: parseFloat(document.getElementById('edit-site-fee').value) || 0
+        entry_fee: parseFloat(document.getElementById('edit-site-fee').value) || 0,
+        region_id: document.getElementById('edit-site-region')?.value || null
       };
 
       const { error } = await supabaseClient

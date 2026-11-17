@@ -103,7 +103,7 @@ async function selectTravelRegion(regionId) {
 
   if (!travelState.cache[regionId]) {
     try {
-      const [transport, tips, itineraries] = await Promise.all([
+      const [transport, tips, itineraries, sites] = await Promise.all([
         supabaseClient.from('transport_options').select('*').eq('region_id', regionId).order('sort_order'),
         supabaseClient.from('travel_tips').select('*').or(`region_id.eq.${regionId},region_id.is.null`).order('sort_order'),
         supabaseClient
@@ -111,10 +111,15 @@ async function selectTravelRegion(regionId) {
           .select('*, itinerary_stops(*, tourist_sites(id, title, entry_fee, artisan_id, artisans(id, user_id, business_name)))')
           .eq('region_id', regionId)
           .eq('is_published', true)
-          .order('duration_days', { ascending: true })
+          .order('duration_days', { ascending: true }),
+        supabaseClient
+          .from('tourist_sites')
+          .select('id, title, description, location, entry_fee, artisan_id, artisans(id, user_id, business_name)')
+          .eq('region_id', regionId)
+          .order('title', { ascending: true })
       ]);
 
-      const firstError = transport.error || tips.error || itineraries.error;
+      const firstError = transport.error || tips.error || itineraries.error || sites.error;
       if (firstError) throw firstError;
 
       const itins = (itineraries.data || []).map(it => ({
@@ -127,7 +132,10 @@ async function selectTravelRegion(regionId) {
         if (s.tourist_sites) travelSites[s.tourist_sites.id] = s.tourist_sites;
       }));
 
+      (sites.data || []).forEach(s => { travelSites[s.id] = s; });
+
       travelState.cache[regionId] = {
+        sites: sites.data || [],
         transport: transport.data || [],
         tips: tips.data || [],
         itineraries: itins
@@ -189,11 +197,11 @@ function renderTravelPanel(region) {
     case 'itineraries': return renderTravelItineraries(data.itineraries);
     case 'transport':   return renderTravelTransport(data.transport);
     case 'tips':        return renderTravelTips(data.tips, region);
-    default:            return renderTravelOverview(region);
+    default:            return renderTravelOverview(region, data.sites);
   }
 }
 
-function renderTravelOverview(region) {
+function renderTravelOverview(region, sites) {
   const facts = [
     ['calendar', 'Best time to visit', region.best_time_to_visit],
     ['cloud-sun', 'Climate', region.climate],
@@ -212,6 +220,24 @@ function renderTravelOverview(region) {
         <div class="travel-card travel-fact">
           <h4><i data-lucide="${icon}"></i> ${title}</h4>
           <p class="travel-text">${escapeHtml(text)}</p>
+        </div>`).join('')}
+    </div>
+    ${renderTravelSites(region, sites || [])}`;
+}
+
+function renderTravelSites(region, sites) {
+  if (!sites.length) return '';
+  return `
+    <h3 class="travel-group-title">Heritage experiences in ${escapeHtml(region.name)}</h3>
+    <div class="travel-grid">
+      ${sites.map(s => `
+        <div class="travel-card">
+          <h4>${escapeHtml(s.title)}</h4>
+          <p class="muted-small">${escapeHtml(s.location || '')}${s.artisans ? ` · Hosted by ${escapeHtml(s.artisans.business_name)}` : ''}</p>
+          <p class="travel-text travel-clamp">${escapeHtml(s.description || '')}</p>
+          <div class="travel-badges"><span class="travel-badge">${Number(s.entry_fee) > 0 ? travelMoney(s.entry_fee) : 'Free entry'}</span></div>
+          ${s.artisans && activeMode === 'customer'
+            ? `<button type="button" class="btn btn-primary btn-small" data-travel-book="${escapeHtml(s.id)}">Book</button>` : ''}
         </div>`).join('')}
     </div>`;
 }
@@ -323,7 +349,19 @@ function renderTravelTips(tips, region) {
 }
 
 // ---------- events ----------
+// Fills the Region dropdown in the artisan "Add/Edit site" form.
+async function populateSiteRegionSelect() {
+  const sel = document.getElementById('site-region');
+  if (!sel) return;
+  const { data, error } = await supabaseClient
+    .from('regions').select('id, name').eq('is_published', true).order('name');
+  if (error) return;
+  sel.innerHTML = '<option value="">No region</option>' +
+    (data || []).map(r => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</option>`).join('');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  populateSiteRegionSelect();
   const section = document.getElementById('travel');
   if (!section) return;
 

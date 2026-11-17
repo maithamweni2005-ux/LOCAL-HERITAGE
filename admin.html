@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Portal - Local Heritage</title>
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="travel-admin.css">
 
   <!-- Supabase JS & Lucide Icons -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -42,6 +43,10 @@
         <a href="#" class="admin-nav-item" data-section="sites">
           <i data-lucide="map-pin"></i>
           <span>Tourist Sites</span>
+        </a>
+        <a href="#" class="admin-nav-item" data-section="travel">
+          <i data-lucide="map"></i>
+          <span>Travel Guide</span>
         </a>
         <a href="#" class="admin-nav-item" data-section="bookings">
           <i data-lucide="calendar"></i>
@@ -171,6 +176,16 @@
         </section>
 
         <!-- 4. BOOKINGS SECTION -->
+        <section id="travel" class="admin-section">
+          <div class="ta-tabs">
+            <button class="ta-tab active" data-ta-tab="regions">Regions</button>
+            <button class="ta-tab" data-ta-tab="itineraries">Itineraries</button>
+            <button class="ta-tab" data-ta-tab="transport">Transport</button>
+            <button class="ta-tab" data-ta-tab="tips">Tips</button>
+          </div>
+          <div id="travelAdminBody"><p class="loading-td">Loading...</p></div>
+        </section>
+
         <section id="bookings" class="admin-section">
           <div class="section-controls">
             <div class="search-bar">
@@ -268,6 +283,31 @@
     </main>
   </div>
 
+  <!-- MODAL: Travel Guide itinerary stops -->
+  <div id="taStopsModal" class="modal-backdrop hidden">
+    <div class="modal modal-scroll modal-wide">
+      <div class="modal-header">
+        <h3 id="taStopsTitle">Itinerary stops</h3>
+        <button class="btn-close" id="taCloseStopsBtn"><i data-lucide="x"></i></button>
+      </div>
+      <div id="taStopsBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Travel Guide add/edit form -->
+  <div id="taFormModal" class="modal-backdrop hidden">
+    <div class="modal modal-scroll">
+      <div class="modal-header">
+        <h3 id="taFormTitle">Add</h3>
+        <button class="btn-close" id="taCloseFormBtn"><i data-lucide="x"></i></button>
+      </div>
+      <form id="taFormForm">
+        <div id="taFormFields"></div>
+        <button type="submit" class="btn btn-primary w-100" id="taFormSaveBtn">Save</button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: Edit Site -->
   <div id="adminEditSiteModal" class="modal-backdrop hidden">
     <div class="modal">
@@ -284,6 +324,10 @@
         <div class="form-group">
           <label for="edit-site-desc">Description</label>
           <textarea id="edit-site-desc" rows="3" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-site-region">Region</label>
+          <select id="edit-site-region"><option value="">No region</option></select>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -346,5 +390,6 @@
 
   <script src="app.js"></script>
   <script src="admin.js"></script>
+  <script src="travel-admin.js"></script>
 </body>
 </html>

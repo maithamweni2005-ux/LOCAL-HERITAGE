@@ -1,7 +1,3 @@
-// =============================================
-// TRAVEL GUIDE (regions, itineraries, transport, tips)
-// Depends on: supabaseClient (app.js), openBookingModal, activeMode (dashboard.js)
-// =============================================
 const TRAVEL_MODES = {
   train:     { label: 'Train',          icon: 'train' },
   bus:       { label: 'Bus',            icon: 'bus' },

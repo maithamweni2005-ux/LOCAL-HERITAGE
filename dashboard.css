@@ -863,6 +863,13 @@ input:read-only {
 .sg-form textarea { resize: vertical; width: 100%; }
 .sg-form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.chat-trigger {
+  background: none; border: none; color: var(--primary); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+}
+.chat-trigger:hover { text-decoration: underline; }
+.chat-trigger svg { width: 14px; height: 14px; }
+
 /* =============================================
    Responsive Styles
    ============================================= */

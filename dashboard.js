@@ -170,6 +170,14 @@ async function loadSitesFeed(filterTerm = '') {
               <i data-lucide="star"></i>
               <span>${count} review${count === 1 ? '' : 's'}</span>
             </button>
+            ${activeMode === 'customer' && artisanUserId && artisanUserId !== activeUser.id ? `
+              <button type="button" class="chat-trigger action-chat-artisan"
+                data-artisan-user-id="${artisanUserId}"
+                data-artisan-name="${escapeHtml(artisanName)}"
+                aria-label="Chat with ${escapeHtml(artisanName)}" title="Chat with the host">
+                <i data-lucide="message-circle"></i>
+                <span>Chat</span>
+              </button>` : ''}
           </div>
 
           <div class="site-card-footer">
@@ -230,6 +238,13 @@ function attachContainerEventDelegation() {
     if (readBtn) {
       e.preventDefault();
       openReadReviewsModal(readBtn.dataset.artisanId, readBtn.dataset.artisanName);
+      return;
+    }
+
+    const chatBtn = e.target.closest('.action-chat-artisan');
+    if (chatBtn) {
+      e.preventDefault();
+      startChatWithUser(chatBtn.dataset.artisanUserId, chatBtn.dataset.artisanName);
       return;
     }
 
@@ -598,10 +613,18 @@ async function loadChatContacts() {
       }
     });
 
+    if (activeChatPartner && !contactsMap.has(activeChatPartner.userId)) {
+      contactsMap.set(activeChatPartner.userId, {
+        userId: activeChatPartner.userId,
+        name: activeChatPartner.name,
+        role: activeChatPartner.role || 'artisan'
+      });
+    }
+
     const contacts = Array.from(contactsMap.values());
 
     if (!contacts.length) {
-      container.innerHTML = '<p class="muted" style="padding:16px;">No conversations yet. Book a site to begin chat.</p>';
+      container.innerHTML = '<p class="muted" style="padding:16px;">No conversations yet. Tap Chat on any site to message its host.</p>';
       return;
     }
 
@@ -631,7 +654,7 @@ function startChatWithUser(recipientUserId, recipientName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('chat').classList.add('active');
 
-  selectChatPartner(recipientUserId, recipientName, 'Host Artisan');
+  selectChatPartner(recipientUserId, recipientName, 'artisan');
 }
 
 window.selectChatPartner = async function(userId, name, role = 'User') {

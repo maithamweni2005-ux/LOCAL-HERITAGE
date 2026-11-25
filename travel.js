@@ -100,8 +100,8 @@ async function selectTravelRegion(regionId) {
   if (!travelState.cache[regionId]) {
     try {
       const [transport, tips, itineraries, sites] = await Promise.all([
-        supabaseClient.from('transport_options').select('*').eq('region_id', regionId).order('sort_order'),
-        supabaseClient.from('travel_tips').select('*').or(`region_id.eq.${regionId},region_id.is.null`).order('sort_order'),
+        supabaseClient.from('transport_options').select('*, tourist_sites(title), artisans(business_name)').eq('region_id', regionId).order('sort_order'),
+        supabaseClient.from('travel_tips').select('*, tourist_sites(title), artisans(business_name)').or(`region_id.eq.${regionId},region_id.is.null`).order('sort_order'),
         supabaseClient
           .from('itineraries')
           .select('*, itinerary_stops(*, tourist_sites(id, title, entry_fee, artisan_id, artisans(id, user_id, business_name)))')
@@ -309,6 +309,7 @@ function renderTravelTransport(options) {
       <div class="travel-card">
         <div class="travel-mode"><i data-lucide="${mode.icon}"></i><span>${escapeHtml(mode.label)}</span></div>
         <h4>${escapeHtml(o.title)}</h4>
+        ${o.site_id ? `<span class="travel-host-tag">Added by ${escapeHtml(o.artisans?.business_name || 'host')}${o.tourist_sites?.title ? ' · ' + escapeHtml(o.tourist_sites.title) : ''}</span>` : ''}
         ${route ? `<p class="muted-small">${route}</p>` : ''}
         ${o.description ? `<p class="travel-text">${escapeHtml(o.description)}</p>` : ''}
         <div class="travel-badges">
@@ -324,8 +325,11 @@ function renderTravelTransport(options) {
 function renderTravelTips(tips, region) {
   if (!tips.length) return '<p class="muted">No tips available yet.</p>';
 
-  const local = tips.filter(t => t.region_id);
-  const general = tips.filter(t => !t.region_id);
+  // Host tips are tied to a site; they show for the site's region.
+  // Site tips without a region only appear on the site card itself.
+  const hostTips = tips.filter(t => t.site_id && t.region_id === region.id);
+  const local = tips.filter(t => t.region_id && !t.site_id);
+  const general = tips.filter(t => !t.region_id && !t.site_id);
 
   const group = (title, list) => list.length ? `
     <h3 class="travel-group-title">${escapeHtml(title)}</h3>
@@ -336,12 +340,14 @@ function renderTravelTips(tips, region) {
           <div class="travel-card">
             <div class="travel-mode"><i data-lucide="${cat.icon}"></i><span>${cat.label}</span></div>
             <h4>${escapeHtml(t.title)}</h4>
+            ${t.site_id ? `<span class="travel-host-tag">${escapeHtml(t.artisans?.business_name || 'Host')}${t.tourist_sites?.title ? ' · ' + escapeHtml(t.tourist_sites.title) : ''}</span>` : ''}
             <p class="travel-text">${escapeHtml(t.content)}</p>
           </div>`;
       }).join('')}
     </div>` : '';
 
-  return group(`Tips for ${region.name}`, local) + group('Good to know across Kenya', general);
+  const out = group(`Tips for ${region.name}`, local) + group('Tips from local hosts', hostTips) + group('Good to know across Kenya', general);
+  return out || '<p class="muted">No tips available yet.</p>';
 }
 
 // ---------- events ----------

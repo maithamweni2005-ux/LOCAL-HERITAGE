@@ -19,8 +19,8 @@
 .travel-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 .travel-panel { display: flex; flex-direction: column; gap: 1rem; }
-.travel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-.travel-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.travel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.travel-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
 
 .travel-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -63,3 +63,7 @@
 }
 
 .travel-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.travel-host-tag { display: inline-block; align-self: flex-start; background: #eff6ff; color: var(--primary); border-radius: 999px; padding: 0.1rem 0.6rem; font-size: 0.72rem; font-weight: 700; }
+.travel-stop-body { min-width: 0; }
+.travel-text, .travel-card h4 { overflow-wrap: anywhere; }

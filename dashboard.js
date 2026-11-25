@@ -157,6 +157,11 @@ async function loadSitesFeed(filterTerm = '') {
 
           <p class="site-desc">${escapeHtml(site.description || '')}</p>
 
+          <button type="button" class="site-guide-btn action-site-guide" data-site-id="${siteId}">
+            <i data-lucide="route"></i>
+            <span>${activeMode === 'artisan' ? 'Manage travel tips & transport' : 'Travel tips & transport'}</span>
+          </button>
+
           <div class="artisan-badge">
             <span class="artisan-name">${escapeHtml(artisanName)}</span>
             <button type="button" class="reviews-trigger action-read-reviews" 

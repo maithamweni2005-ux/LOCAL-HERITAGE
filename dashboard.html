@@ -405,6 +405,26 @@
     </div>
   </div>
 
+  <!-- Site Travel Guide Modal (tips + transport for one site) -->
+  <div id="siteGuideModal" class="modal-backdrop hidden">
+    <div class="modal modal-guide">
+      <div class="modal-header">
+        <div>
+          <h3 id="siteGuideTitle">Travel guide</h3>
+          <p class="muted-small" id="siteGuideSubtitle">Tips and transport for this site</p>
+        </div>
+        <button class="btn-close" id="closeSiteGuideBtn" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="sg-tabs" role="tablist">
+        <button type="button" class="sg-tab active" data-sg-tab="tips">Travel tips</button>
+        <button type="button" class="sg-tab" data-sg-tab="transport">Transport</button>
+      </div>
+      <div id="siteGuideBody"></div>
+    </div>
+  </div>
+
   <!-- Kenya Map Modal -->
   <div id="mapModal" class="modal-backdrop hidden">
     <div class="modal modal-large">
@@ -431,5 +451,6 @@
   <script src="app.js"></script>
   <script src="dashboard.js"></script>
   <script src="travel.js"></script>
+  <script src="site-guide.js"></script>
 </body>
 </html>
